@@ -516,6 +516,7 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
           </div>
           <div class="chip-row">
             <button class="chip active" data-filter="all" onclick="setScheduleFilter('all')">전체</button>
+            <button class="chip" data-filter="today" onclick="setScheduleFilter('today')">오늘 확인 대상</button>
             <button class="chip" data-filter="need" onclick="setScheduleFilter('need')">확인 필요</button>
             <button class="chip" data-filter="done" onclick="setScheduleFilter('done')">확인 완료</button>
           </div>
@@ -527,14 +528,13 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
             <thead>
               <tr>
                 <th data-key="name">이름<span class="sort-arrow"></span></th>
-                <th data-key="mentor">담당멘토<span class="sort-arrow"></span></th>
                 <th data-key="check_day">확인요일<span class="sort-arrow"></span></th>
                 <th data-key="last_checked_at">최종확인일자<span class="sort-arrow"></span></th>
                 <th data-key="needCheck">이번주 상태<span class="sort-arrow"></span></th>
               </tr>
             </thead>
             <tbody id="schedule-tbody">
-              <tr class="empty-row"><td colspan="5"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
+              <tr class="empty-row"><td colspan="4"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -1318,7 +1318,10 @@ function filteredScheduleStudents(){
   const q = (document.getElementById('schedule-search').value||'').trim().toLowerCase();
   let list = _scheduleStudents;
   if(q) list = list.filter(s=>(s.name||'').toLowerCase().includes(q));
-  if(_scheduleFilter==='need') list = list.filter(s=>needsScheduleCheck(s));
+  if(_scheduleFilter==='today'){
+    const todayDow = new Date().getDay();
+    list = list.filter(s=>s.check_day!=null && Number(s.check_day)===todayDow);
+  }else if(_scheduleFilter==='need') list = list.filter(s=>needsScheduleCheck(s));
   else if(_scheduleFilter==='done') list = list.filter(s=>s.check_day!=null && !needsScheduleCheck(s));
   return list.map(s=>({...s, needCheck: needsScheduleCheck(s) ? 1 : 0}));
 }
@@ -1332,7 +1335,7 @@ function renderScheduleList(){
 function renderScheduleRows(data){
   const tbody = document.getElementById('schedule-tbody');
   if(!data.length){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">조건에 맞는 학생이 없습니다.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">조건에 맞는 학생이 없습니다.</td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(s=>{
@@ -1347,7 +1350,6 @@ function renderScheduleRows(data){
     return `
       <tr onclick="openScheduleDetail('${s.id}')">
         <td><strong>${escapeHtml(s.name)}</strong></td>
-        <td>${escapeHtml(s.mentor)||'-'}</td>
         <td>${checkDayLabel}</td>
         <td>${lastChecked}</td>
         <td>${statusBadge}</td>
