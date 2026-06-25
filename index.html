@@ -217,6 +217,16 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
 .recipient-confirmed{color:var(--green);}
 .recipient-pending{color:var(--text3);}
 
+/* ===== 학원생관리: 메모 타임라인 ===== */
+.note-card{
+  background:var(--bg);border-radius:12px;padding:12px 14px;border-left:3px solid var(--p2);
+}
+.note-card-meta{font-size:11px;color:var(--text3);font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.note-card-content{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;}
+.note-card-delete{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;}
+.note-card-delete:hover{color:var(--coral);}
+.notes-empty{font-size:12px;color:var(--text3);padding:14px 0;text-align:center;}
+
 /* ===== 홈 대시보드 ===== */
 .home-wrap{max-width:1040px;}
 .hero-card{
@@ -283,8 +293,9 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
 .checkneed-names{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:64px;overflow-y:auto;}
 .checkneed-chip{
   font-size:11px;font-weight:700;background:var(--coral-l);color:var(--coral);
-  padding:4px 10px;border-radius:20px;
+  padding:4px 10px;border-radius:20px;cursor:pointer;transition:all .15s;
 }
+.checkneed-chip:hover{background:var(--coral);color:#fff;}
 .checkneed-empty{font-size:12px;color:var(--text3);margin-top:8px;font-weight:600;}
 
 /* ===== 일정 달력 ===== */
@@ -362,7 +373,10 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
         <span class="menu-item-ico">🏠</span><span>홈</span>
       </button>
       <button class="menu-item" data-page="students" onclick="navTo('students')">
-        <span class="menu-item-ico">🧑‍🎓</span><span>학생관리</span>
+        <span class="menu-item-ico">🧑‍🎓</span><span>원생등록</span>
+      </button>
+      <button class="menu-item" data-page="schedule" onclick="navTo('schedule')">
+        <span class="menu-item-ico">📆</span><span>학원생관리</span>
       </button>
       <button class="menu-item" data-page="worklogs" onclick="navTo('worklogs')">
         <span class="menu-item-ico">🕒</span><span>근무일지</span>
@@ -420,7 +434,7 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
             <div class="stat-label">오늘 저녁 신청</div>
             <div class="stat-value amber" id="home-stat-dinner">-</div>
           </div>
-          <div class="stat-card stat-card-wide" id="home-stat-checkneed-card">
+          <div class="stat-card stat-card-wide" id="home-stat-checkneed-card" onclick="navTo('schedule')" style="cursor:pointer;">
             <div class="stat-label">이번주 스케줄 확인 필요</div>
             <div class="stat-value coral" id="home-stat-checkneed">-</div>
             <div class="checkneed-names" id="home-checkneed-names"></div>
@@ -445,12 +459,12 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
       </div>
     </section>
 
-    <!-- ============ 학생관리 ============ -->
+    <!-- ============ 원생등록 ============ -->
     <section class="page" id="page-students" style="display:none;">
       <div class="topbar">
         <div class="topbar-left">
           <div>
-            <div class="page-title">학생관리</div>
+            <div class="page-title">원생등록</div>
             <div class="page-date" id="students-count-label">전체 0명</div>
           </div>
         </div>
@@ -475,12 +489,52 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
                 <th data-key="mentor">담당멘토<span class="sort-arrow"></span></th>
                 <th data-key="subjects">수강과목<span class="sort-arrow"></span></th>
                 <th data-key="registered_at">등록일<span class="sort-arrow"></span></th>
-                <th data-key="check_day">확인요일<span class="sort-arrow"></span></th>
                 <th>메모</th>
               </tr>
             </thead>
             <tbody id="student-tbody">
-              <tr class="empty-row"><td colspan="10"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
+              <tr class="empty-row"><td colspan="9"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 학원생관리 (스케줄 확인) ============ -->
+    <section class="page" id="page-schedule" style="display:none;">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div>
+            <div class="page-title">학원생관리</div>
+            <div class="page-date" id="schedule-count-label">전체 0명</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="search-box">
+            <span class="search-ico">🔍</span>
+            <input type="text" id="schedule-search" placeholder="이름 검색" oninput="renderScheduleList()">
+          </div>
+          <div class="chip-row">
+            <button class="chip active" data-filter="all" onclick="setScheduleFilter('all')">전체</button>
+            <button class="chip" data-filter="need" onclick="setScheduleFilter('need')">확인 필요</button>
+            <button class="chip" data-filter="done" onclick="setScheduleFilter('done')">확인 완료</button>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="table-wrap card">
+          <table class="data-table" id="schedule-table">
+            <thead>
+              <tr>
+                <th data-key="name">이름<span class="sort-arrow"></span></th>
+                <th data-key="mentor">담당멘토<span class="sort-arrow"></span></th>
+                <th data-key="check_day">확인요일<span class="sort-arrow"></span></th>
+                <th data-key="last_checked_at">최종확인일자<span class="sort-arrow"></span></th>
+                <th data-key="needCheck">이번주 상태<span class="sort-arrow"></span></th>
+              </tr>
+            </thead>
+            <tbody id="schedule-tbody">
+              <tr class="empty-row"><td colspan="5"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -502,6 +556,20 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
         </div>
       </div>
       <div class="content">
+        <div class="section-toolbar">
+          <div class="section-toolbar-left">
+            <span class="section-label" style="margin-bottom:0;"><span class="bar"></span>월별 근무자 합계</span>
+          </div>
+          <div class="section-toolbar-left">
+            <button class="cal-nav-btn" onclick="worklogSummaryMonthShift(-1)">‹</button>
+            <div class="cal-month-label" id="worklog-summary-month-label" style="min-width:90px;">-</div>
+            <button class="cal-nav-btn" onclick="worklogSummaryMonthShift(1)">›</button>
+          </div>
+        </div>
+        <div class="card card-pad" style="margin-bottom:24px;">
+          <div id="worklog-summary-wrap" class="stat-row"></div>
+        </div>
+
         <div class="section-toolbar">
           <div class="section-toolbar-left">
             <div class="search-box" style="min-width:160px;">
@@ -541,22 +609,37 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
         <div class="topbar-left">
           <div>
             <div class="page-title">당일 식사관리</div>
-            <div class="page-date" id="meal-date-label">-</div>
+            <div class="page-date" id="meal-count-label">전체 0건</div>
           </div>
         </div>
         <div class="topbar-right">
-          <input type="date" id="meal-date-picker" onchange="onMealDateChange()" style="border:1px solid var(--border);border-radius:11px;padding:9px 13px;font-family:inherit;font-size:13px;background:var(--white);color:var(--text);">
+          <button class="btn btn-primary" onclick="openMealModal()">+ 식사 신청 등록</button>
         </div>
       </div>
       <div class="content">
-        <div class="stat-row" id="meal-stats"></div>
-        <div class="chip-row" id="meal-filter-chips" style="margin-bottom:16px;">
-          <button class="chip active" data-filter="all" onclick="setMealFilter('all')">전체</button>
-          <button class="chip" data-filter="ate" onclick="setMealFilter('ate')">식사한 학생</button>
-          <button class="chip" data-filter="not" onclick="setMealFilter('not')">미식사 학생</button>
+        <div class="section-toolbar">
+          <div class="section-toolbar-left">
+            <div class="search-box" style="min-width:160px;">
+              <span class="search-ico">📅</span>
+              <input type="date" id="meal-filter-date" onchange="renderMealRecords()" style="border:none;background:none;outline:none;font-family:inherit;font-size:13px;color:var(--text);width:100%;">
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="clearMealDateFilter()">필터 초기화</button>
+          </div>
         </div>
-        <div class="card" id="meal-list-wrap">
-          <div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div>
+        <div class="table-wrap card">
+          <table class="data-table" id="meal-table">
+            <thead>
+              <tr>
+                <th data-key="meal_date">일자<span class="sort-arrow"></span></th>
+                <th data-key="meal_type">구분<span class="sort-arrow"></span></th>
+                <th data-key="count">인원<span class="sort-arrow"></span></th>
+                <th>학생이름</th>
+              </tr>
+            </thead>
+            <tbody id="meal-tbody">
+              <tr class="empty-row"><td colspan="4"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -575,8 +658,21 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
         </div>
       </div>
       <div class="content">
-        <div class="board-list" id="handover-list">
-          <div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div>
+        <div class="table-wrap card">
+          <table class="data-table" id="handover-table">
+            <thead>
+              <tr>
+                <th data-key="created_at">날짜·시간<span class="sort-arrow"></span></th>
+                <th data-key="author">작성자<span class="sort-arrow"></span></th>
+                <th>내용</th>
+                <th>인수자</th>
+                <th data-key="status">확인상태<span class="sort-arrow"></span></th>
+              </tr>
+            </thead>
+            <tbody id="handover-tbody">
+              <tr class="empty-row"><td colspan="5"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -611,34 +707,65 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
         <div class="field"><label>수강과목</label><input type="text" id="student-subjects" placeholder="예: 수학, 영어"></div>
         <div class="field"><label>등록일</label><input type="date" id="student-registered-at"></div>
       </div>
-      <div class="field">
-        <label>확인요일 <span style="color:var(--text3);font-weight:500;">— 매주 스케줄을 확인해줘야 하는 요일</span></label>
-        <select id="student-check-day">
-          <option value="">지정 안함</option>
-          <option value="1">월요일</option>
-          <option value="2">화요일</option>
-          <option value="3">수요일</option>
-          <option value="4">목요일</option>
-          <option value="5">금요일</option>
-          <option value="6">토요일</option>
-          <option value="0">일요일</option>
-        </select>
-      </div>
-      <div class="field" id="student-check-status-wrap" style="display:none;background:var(--bg);border-radius:10px;padding:12px 14px;">
-        <label style="margin-bottom:8px;">이번주 확인 상태</label>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <span id="student-check-status-badge"></span>
-          <button type="button" class="btn btn-primary btn-sm" id="student-check-now-btn" onclick="markStudentCheckedNow()">이번주 확인완료</button>
-        </div>
-      </div>
       <div class="field"><label>메모</label><textarea id="student-memo" placeholder="간단 메모"></textarea></div>
       <div class="field"><label>상담메모</label><textarea id="student-counsel-memo" placeholder="상담 관련 메모"></textarea></div>
-      <div class="field"><label>특이사항</label><textarea id="student-notes" placeholder="특이사항"></textarea></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-danger" id="student-delete-btn" style="display:none;" onclick="deleteStudent()">삭제</button>
       <button class="btn btn-secondary" onclick="closeModal('m-student')">취소</button>
       <button class="btn btn-primary" onclick="saveStudent()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 학원생관리: 학생별 스케줄확인 + 메모 타임라인 모달 -->
+<div class="modal-overlay" id="m-schedule-detail">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <div class="modal-title" id="m-schedule-detail-title">학원생 관리</div>
+      <button class="modal-close" onclick="closeModal('m-schedule-detail')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="schedule-student-id">
+      <div class="field-row">
+        <div class="field">
+          <label>확인요일 <span style="color:var(--text3);font-weight:500;">— 매주 스케줄을 확인해줘야 하는 요일</span></label>
+          <select id="schedule-check-day" onchange="onScheduleCheckDayChange()">
+            <option value="">지정 안함</option>
+            <option value="1">월요일</option>
+            <option value="2">화요일</option>
+            <option value="3">수요일</option>
+            <option value="4">목요일</option>
+            <option value="5">금요일</option>
+            <option value="6">토요일</option>
+            <option value="0">일요일</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>최종확인일자</label>
+          <div style="font-size:13px;font-weight:700;padding:10px 0;" id="schedule-last-checked-display">-</div>
+        </div>
+      </div>
+      <div class="field" id="schedule-check-status-wrap" style="display:none;background:var(--bg);border-radius:10px;padding:12px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <span id="schedule-check-status-badge"></span>
+          <button type="button" class="btn btn-primary btn-sm" onclick="markScheduleCheckedNow()">이번주 확인완료</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:24px;">
+        <label>특이사항 메모 추가</label>
+        <textarea id="schedule-new-note" placeholder="이번주 체크하면서 남길 특이사항을 입력하세요" style="min-height:70px;"></textarea>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="addScheduleNote()">메모 추가</button>
+      </div>
+
+      <div class="field">
+        <label>이전 기록 <span style="color:var(--text3);font-weight:500;">— 시간순으로 누적됩니다</span></label>
+        <div id="schedule-notes-timeline" style="display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('m-schedule-detail')">닫기</button>
     </div>
   </div>
 </div>
@@ -707,16 +834,18 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
     </div>
     <div class="modal-body">
       <input type="hidden" id="handover-edit-id">
-      <div class="field"><label>제목 *</label><input type="text" id="handover-title-input" placeholder="제목"></div>
-      <div class="field"><label>내용</label><textarea id="handover-content" placeholder="내용을 입력하세요" style="min-height:120px;"></textarea></div>
-      <div class="field"><label>작성자 *</label><input type="text" id="handover-author" placeholder="작성자명"></div>
+      <div class="field" style="background:var(--bg);border-radius:10px;padding:12px 14px;">
+        <label style="margin-bottom:2px;">날짜</label>
+        <div id="handover-date-display" style="font-size:14px;font-weight:800;color:var(--text);">-</div>
+      </div>
+      <div class="field"><label>내용 *</label><textarea id="handover-content" placeholder="내용을 입력하세요" style="min-height:120px;"></textarea></div>
+      <div class="field">
+        <label>작성자 *</label>
+        <select id="handover-author-select"></select>
+      </div>
       <div class="field">
         <label>인수자 (다중 선택 가능)</label>
-        <div id="handover-recipient-input-wrap" style="display:flex;gap:8px;">
-          <input type="text" id="handover-recipient-input" placeholder="인수자 이름 입력 후 추가" style="flex:1;">
-          <button class="btn btn-secondary btn-sm" onclick="addRecipientChip()">추가</button>
-        </div>
-        <div class="checkbox-row" id="handover-recipient-chips" style="margin-top:10px;"></div>
+        <div class="checkbox-row" id="handover-recipient-checkboxes"></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -737,6 +866,60 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
     <div class="modal-foot">
       <button class="btn btn-danger" onclick="deleteHandover()">삭제</button>
       <button class="btn btn-secondary" onclick="closeModal('m-handover-detail')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 식사 신청 등록/수정 모달 -->
+<div class="modal-overlay" id="m-meal">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <div class="modal-title" id="m-meal-title">식사 신청 등록</div>
+      <button class="modal-close" onclick="closeModal('m-meal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="meal-edit-id">
+      <div class="field-row">
+        <div class="field"><label>날짜 *</label><input type="date" id="meal-form-date" onchange="onMealFormDateOrTypeChange()"></div>
+        <div class="field">
+          <label>구분 *</label>
+          <select id="meal-form-type" onchange="onMealFormDateOrTypeChange()">
+            <option value="lunch">점심</option>
+            <option value="dinner">저녁</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="meal-existing-notice" style="display:none;background:var(--p-light);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--p1);font-weight:700;">
+        해당 날짜·구분에 이미 등록된 신청이 있어 자동으로 불러왔어요. 저장하면 갱신됩니다.
+      </div>
+      <div class="field">
+        <label>신청 학생 <span id="meal-form-count" style="color:var(--p1);font-weight:800;">(0명)</span></label>
+        <div class="search-box" style="margin-bottom:10px;width:100%;">
+          <span class="search-ico">🔍</span>
+          <input type="text" id="meal-student-search" placeholder="학생 검색" oninput="renderMealStudentCheckboxes()">
+        </div>
+        <div id="meal-student-checkbox-list" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:10px;"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('m-meal')">취소</button>
+      <button class="btn btn-primary" onclick="saveMealRecord()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 식사 신청 상세보기 모달 -->
+<div class="modal-overlay" id="m-meal-detail">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <div class="modal-title" id="m-meal-detail-title">식사 신청 상세</div>
+      <button class="modal-close" onclick="closeModal('m-meal-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="m-meal-detail-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="meal-detail-delete-btn" onclick="deleteMealRecord()">삭제</button>
+      <button class="btn btn-secondary" onclick="closeModal('m-meal-detail')">닫기</button>
+      <button class="btn btn-primary" id="meal-detail-edit-btn" onclick="editMealFromDetail()">수정</button>
     </div>
   </div>
 </div>
@@ -846,6 +1029,14 @@ function fmtDateTime(iso){
   const hh=String(dt.getHours()).padStart(2,'0'),mm=String(dt.getMinutes()).padStart(2,'0');
   return `${y}.${m}.${day} ${hh}:${mm}`;
 }
+// 년.월.일 (요일) 시:분 형식 — 인수인계 등에서 날짜를 자세히 보여줄 때 사용
+function fmtDateTimeWithDow(iso){
+  if(!iso)return '';
+  const dt=new Date(iso);
+  const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),day=String(dt.getDate()).padStart(2,'0');
+  const hh=String(dt.getHours()).padStart(2,'0'),mm=String(dt.getMinutes()).padStart(2,'0');
+  return `${y}.${m}.${day} (${DAY_LABELS[dt.getDay()]}) ${hh}:${mm}`;
+}
 function escapeHtml(s){
   if(s==null)return '';
   return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -869,6 +1060,7 @@ function toggleSidebar(){
 const PAGE_INIT = {
   home: ()=>{ setHomeDate(); initHomeDashboard(); },
   students: ()=>{ if(!_studentsLoaded){loadStudents();} },
+  schedule: ()=>{ if(!_scheduleLoaded){loadScheduleList();} },
   worklogs: ()=>{ if(!_workLogsLoaded){loadWorkersAndLogs();} },
   meals: ()=>{ if(!_mealsLoaded){initMeals();} },
   handover: ()=>{ if(!_handoverLoaded){loadHandovers();} },
@@ -981,7 +1173,7 @@ function makeSortable(tableId, dataGetter, renderFn){
 
 <script>
 /* ============================================
-   1. 학생관리
+   1. 원생등록 (기본정보만 — 스케줄 확인은 "학원생관리"에서 별도 처리)
    ============================================ */
 let _students = [];
 let _studentsLoaded = false;
@@ -1013,20 +1205,10 @@ function renderStudents(){
 function renderStudentRows(data){
   const tbody = document.getElementById('student-tbody');
   if(!data.length){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="10">등록된 학생이 없습니다.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">등록된 학생이 없습니다.</td></tr>`;
     return;
   }
-  tbody.innerHTML = data.map(s=>{
-    let checkDayCell = '-';
-    if(s.check_day!==null && s.check_day!==undefined && s.check_day!==''){
-      const label = DAY_LABELS[Number(s.check_day)]+'요일';
-      if(needsScheduleCheck(s)){
-        checkDayCell = `<span class="badge badge-red">${label} · 미확인</span>`;
-      }else{
-        checkDayCell = `<span class="badge badge-green">${label} · 확인완료</span>`;
-      }
-    }
-    return `
+  tbody.innerHTML = data.map(s=>`
     <tr onclick="openStudentModal('${s.id}')">
       <td><strong>${escapeHtml(s.name)}</strong></td>
       <td>${escapeHtml(s.school)||'-'}</td>
@@ -1036,11 +1218,9 @@ function renderStudentRows(data){
       <td>${escapeHtml(s.mentor)||'-'}</td>
       <td>${escapeHtml(s.subjects)||'-'}</td>
       <td>${s.registered_at?fmtDate(s.registered_at):'-'}</td>
-      <td>${checkDayCell}</td>
       <td class="td-memo">${escapeHtml(s.memo)||'-'}</td>
     </tr>
-  `;
-  }).join('');
+  `).join('');
 }
 
 function openStudentModal(id){
@@ -1059,61 +1239,14 @@ function openStudentModal(id){
     document.getElementById('student-registered-at').value = s.registered_at||'';
     document.getElementById('student-memo').value = s.memo||'';
     document.getElementById('student-counsel-memo').value = s.counsel_memo||'';
-    document.getElementById('student-notes').value = s.notes||'';
-    document.getElementById('student-check-day').value = (s.check_day===null||s.check_day===undefined)?'':String(s.check_day);
-    updateStudentCheckStatusUI(s);
   }else{
     document.getElementById('m-student-title').textContent = '학생 추가';
     ['student-name','student-school','student-grade','student-mentor','student-phone',
-     'student-parent-phone','student-subjects','student-memo','student-counsel-memo','student-notes']
+     'student-parent-phone','student-subjects','student-memo','student-counsel-memo']
       .forEach(id2=>document.getElementById(id2).value='');
     document.getElementById('student-registered-at').value = todayStr();
-    document.getElementById('student-check-day').value = '';
-    updateStudentCheckStatusUI(null);
   }
   openModal('m-student');
-}
-
-function updateStudentCheckStatusUI(student){
-  const wrap = document.getElementById('student-check-status-wrap');
-  const badge = document.getElementById('student-check-status-badge');
-  const checkDayVal = document.getElementById('student-check-day').value;
-  if(!student || checkDayVal===''){
-    wrap.style.display = 'none';
-    return;
-  }
-  wrap.style.display = 'block';
-  if(needsScheduleCheck(student)){
-    badge.innerHTML = `<span class="badge badge-red">🔴 이번주 미확인</span>`;
-  }else if(isCheckedThisWeek(student.last_checked_at)){
-    badge.innerHTML = `<span class="badge badge-green">🟢 이번주 확인완료 (${fmtDateTime(student.last_checked_at)})</span>`;
-  }else{
-    badge.innerHTML = `<span class="badge badge-gray">확인요일 전</span>`;
-  }
-}
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  const sel = document.getElementById('student-check-day');
-  if(sel){
-    sel.addEventListener('change', ()=>{
-      const editId = document.getElementById('student-edit-id').value;
-      const s = editId ? _students.find(x=>x.id===editId) : null;
-      updateStudentCheckStatusUI(s);
-    });
-  }
-});
-
-async function markStudentCheckedNow(){
-  const editId = document.getElementById('student-edit-id').value;
-  if(!editId){ toast('학생을 먼저 저장한 뒤 확인 처리해주세요','error'); return; }
-  const now = new Date().toISOString();
-  const result = await sb.update('students', editId, {last_checked_at: now});
-  if(!result) return;
-  const idx = _students.findIndex(x=>x.id===editId);
-  if(idx>-1) _students[idx] = result;
-  updateStudentCheckStatusUI(result);
-  renderStudents();
-  toast('이번주 확인완료 처리했습니다');
 }
 
 async function saveStudent(){
@@ -1128,10 +1261,8 @@ async function saveStudent(){
     parent_phone: document.getElementById('student-parent-phone').value.trim(),
     subjects: document.getElementById('student-subjects').value.trim(),
     registered_at: document.getElementById('student-registered-at').value || null,
-    check_day: document.getElementById('student-check-day').value===''?null:Number(document.getElementById('student-check-day').value),
     memo: document.getElementById('student-memo').value.trim(),
     counsel_memo: document.getElementById('student-counsel-memo').value.trim(),
-    notes: document.getElementById('student-notes').value.trim(),
   };
   const editId = document.getElementById('student-edit-id').value;
   let result;
@@ -1144,6 +1275,7 @@ async function saveStudent(){
   closeModal('m-student');
   toast(editId ? '학생 정보를 수정했습니다' : '학생을 추가했습니다');
   await loadStudents();
+  if(_scheduleLoaded) await loadScheduleList(); // 학원생관리 목록도 이름 등 변경사항 반영
 }
 
 function deleteStudent(){
@@ -1155,6 +1287,175 @@ function deleteStudent(){
     closeModal('m-student');
     toast('학생을 삭제했습니다');
     await loadStudents();
+  });
+}
+</script>
+
+<script>
+/* ============================================
+   1-1. 학원생관리 (스케줄 확인 + 특이사항 메모 누적)
+   ============================================ */
+let _scheduleStudents = [];
+let _scheduleLoaded = false;
+let _scheduleFilter = 'all';
+let _scheduleNotesCache = []; // 현재 상세모달에서 보고 있는 학생의 메모 목록
+let _scheduleCurrentStudentId = null;
+
+async function loadScheduleList(){
+  _scheduleStudents = await sb.get('students', '&is_active=eq.true&order=name.asc');
+  _scheduleLoaded = true;
+  renderScheduleList();
+  makeSortable('schedule-table', ()=>filteredScheduleStudents(), renderScheduleRows);
+}
+
+function setScheduleFilter(f){
+  _scheduleFilter = f;
+  document.querySelectorAll('#page-schedule .chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===f));
+  renderScheduleList();
+}
+
+function filteredScheduleStudents(){
+  const q = (document.getElementById('schedule-search').value||'').trim().toLowerCase();
+  let list = _scheduleStudents;
+  if(q) list = list.filter(s=>(s.name||'').toLowerCase().includes(q));
+  if(_scheduleFilter==='need') list = list.filter(s=>needsScheduleCheck(s));
+  else if(_scheduleFilter==='done') list = list.filter(s=>s.check_day!=null && !needsScheduleCheck(s));
+  return list.map(s=>({...s, needCheck: needsScheduleCheck(s) ? 1 : 0}));
+}
+
+function renderScheduleList(){
+  const data = filteredScheduleStudents();
+  document.getElementById('schedule-count-label').textContent = `전체 ${data.length}명`;
+  renderScheduleRows(data);
+}
+
+function renderScheduleRows(data){
+  const tbody = document.getElementById('schedule-tbody');
+  if(!data.length){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">조건에 맞는 학생이 없습니다.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(s=>{
+    const checkDayLabel = (s.check_day!==null && s.check_day!==undefined) ? DAY_LABELS[Number(s.check_day)]+'요일' : '-';
+    const lastChecked = s.last_checked_at ? fmtDateTime(s.last_checked_at) : '-';
+    let statusBadge = `<span class="badge badge-gray">미지정</span>`;
+    if(s.check_day!==null && s.check_day!==undefined){
+      statusBadge = needsScheduleCheck(s)
+        ? `<span class="badge badge-red">🔴 확인 필요</span>`
+        : `<span class="badge badge-green">🟢 확인완료</span>`;
+    }
+    return `
+      <tr onclick="openScheduleDetail('${s.id}')">
+        <td><strong>${escapeHtml(s.name)}</strong></td>
+        <td>${escapeHtml(s.mentor)||'-'}</td>
+        <td>${checkDayLabel}</td>
+        <td>${lastChecked}</td>
+        <td>${statusBadge}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/* ---- 상세 모달: 확인요일 설정 + 이번주 체크 + 메모 타임라인 ---- */
+async function openScheduleDetail(id){
+  _scheduleCurrentStudentId = id;
+  const s = _scheduleStudents.find(x=>x.id===id);
+  if(!s) return;
+
+  document.getElementById('schedule-student-id').value = id;
+  document.getElementById('m-schedule-detail-title').textContent = `${s.name} 관리`;
+  document.getElementById('schedule-check-day').value = (s.check_day===null||s.check_day===undefined) ? '' : String(s.check_day);
+  document.getElementById('schedule-last-checked-display').textContent = s.last_checked_at ? fmtDateTime(s.last_checked_at) : '아직 확인한 적 없음';
+  document.getElementById('schedule-new-note').value = '';
+
+  updateScheduleCheckStatusUI(s);
+  openModal('m-schedule-detail');
+
+  document.getElementById('schedule-notes-timeline').innerHTML = `<div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div>`;
+  _scheduleNotesCache = await sb.get('student_notes', `&student_id=eq.${id}&order=created_at.desc`);
+  renderScheduleNotesTimeline();
+}
+
+function updateScheduleCheckStatusUI(student){
+  const wrap = document.getElementById('schedule-check-status-wrap');
+  const badge = document.getElementById('schedule-check-status-badge');
+  const checkDayVal = document.getElementById('schedule-check-day').value;
+  if(checkDayVal===''){
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  if(needsScheduleCheck(student)){
+    badge.innerHTML = `<span class="badge badge-red">🔴 이번주 미확인</span>`;
+  }else if(isCheckedThisWeek(student.last_checked_at)){
+    badge.innerHTML = `<span class="badge badge-green">🟢 이번주 확인완료</span>`;
+  }else{
+    badge.innerHTML = `<span class="badge badge-gray">확인요일 전</span>`;
+  }
+}
+
+async function onScheduleCheckDayChange(){
+  const id = document.getElementById('schedule-student-id').value;
+  const newDay = document.getElementById('schedule-check-day').value;
+  const result = await sb.update('students', id, { check_day: newDay===''?null:Number(newDay) });
+  if(!result) return;
+  const idx = _scheduleStudents.findIndex(x=>x.id===id);
+  if(idx>-1) _scheduleStudents[idx] = result;
+  updateScheduleCheckStatusUI(result);
+  renderScheduleList();
+}
+
+async function markScheduleCheckedNow(){
+  const id = document.getElementById('schedule-student-id').value;
+  if(!id) return;
+  const now = new Date().toISOString();
+  const result = await sb.update('students', id, {last_checked_at: now});
+  if(!result) return;
+  const idx = _scheduleStudents.findIndex(x=>x.id===id);
+  if(idx>-1) _scheduleStudents[idx] = result;
+  document.getElementById('schedule-last-checked-display').textContent = fmtDateTime(now);
+  updateScheduleCheckStatusUI(result);
+  renderScheduleList();
+  toast('이번주 확인완료 처리했습니다');
+}
+
+/* ---- 메모 타임라인 ---- */
+function renderScheduleNotesTimeline(){
+  const wrap = document.getElementById('schedule-notes-timeline');
+  if(!_scheduleNotesCache.length){
+    wrap.innerHTML = `<div class="notes-empty">아직 기록된 특이사항이 없습니다.</div>`;
+    return;
+  }
+  wrap.innerHTML = _scheduleNotesCache.map(n=>`
+    <div class="note-card">
+      <div class="note-card-meta">
+        <span>${fmtDateTime(n.created_at)}</span>
+        <button class="note-card-delete" onclick="deleteScheduleNote('${n.id}')">삭제</button>
+      </div>
+      <div class="note-card-content">${escapeHtml(n.content)}</div>
+    </div>
+  `).join('');
+}
+
+async function addScheduleNote(){
+  const studentId = document.getElementById('schedule-student-id').value;
+  const content = document.getElementById('schedule-new-note').value.trim();
+  if(!content){ toast('메모 내용을 입력해주세요','error'); return; }
+  const result = await sb.insert('student_notes', { student_id: studentId, content });
+  if(!result) return;
+  _scheduleNotesCache.unshift(result);
+  document.getElementById('schedule-new-note').value='';
+  renderScheduleNotesTimeline();
+  toast('메모를 추가했습니다');
+}
+
+function deleteScheduleNote(noteId){
+  confirmAction('이 메모를 삭제할까요?', async ()=>{
+    const ok = await sb.delete('student_notes', noteId);
+    if(!ok) return;
+    _scheduleNotesCache = _scheduleNotesCache.filter(n=>n.id!==noteId);
+    renderScheduleNotesTimeline();
+    toast('메모를 삭제했습니다');
   });
 }
 </script>
@@ -1177,11 +1478,54 @@ async function loadWorkersAndLogs(){
   document.getElementById('worklog-in').addEventListener('input', updateWorkLogCalcPreview);
   document.getElementById('worklog-out').addEventListener('input', updateWorkLogCalcPreview);
   document.getElementById('worklog-break').addEventListener('input', updateWorkLogCalcPreview);
+
+  const now = new Date();
+  if(_worklogSummaryYear===undefined){ _worklogSummaryYear=now.getFullYear(); _worklogSummaryMonth=now.getMonth(); }
+  renderWorklogSummary();
 }
 
 async function loadWorkLogs(){
   _workLogs = await sb.get('work_logs', '&order=work_date.desc,clock_in.desc');
   renderWorkLogs();
+  if(_worklogSummaryYear!==undefined) renderWorklogSummary();
+}
+
+/* ---- 월별 근무자별 합계 ---- */
+let _worklogSummaryYear, _worklogSummaryMonth; // 0-indexed month
+
+function worklogSummaryMonthShift(diff){
+  _worklogSummaryMonth += diff;
+  if(_worklogSummaryMonth<0){ _worklogSummaryMonth=11; _worklogSummaryYear--; }
+  if(_worklogSummaryMonth>11){ _worklogSummaryMonth=0; _worklogSummaryYear++; }
+  renderWorklogSummary();
+}
+
+function renderWorklogSummary(){
+  document.getElementById('worklog-summary-month-label').textContent = `${_worklogSummaryYear}년 ${_worklogSummaryMonth+1}월`;
+
+  const prefix = `${_worklogSummaryYear}-${String(_worklogSummaryMonth+1).padStart(2,'0')}`;
+  const monthLogs = _workLogs.filter(l=>(l.work_date||'').startsWith(prefix));
+
+  const totals = {}; // worker_id -> sum hours
+  monthLogs.forEach(l=>{
+    if(l.total_hours==null) return;
+    totals[l.worker_id] = (totals[l.worker_id]||0) + Number(l.total_hours);
+  });
+
+  const wrap = document.getElementById('worklog-summary-wrap');
+  const workerIds = Object.keys(totals);
+  if(!workerIds.length){
+    wrap.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:6px 0;">이번 달 등록된 근무일지가 없습니다.</div>`;
+    return;
+  }
+  // 근무시간 많은 순서로 정렬
+  workerIds.sort((a,b)=>totals[b]-totals[a]);
+  wrap.innerHTML = workerIds.map(wid=>`
+    <div class="stat-card">
+      <div class="stat-label">${escapeHtml(workerName(wid))}</div>
+      <div class="stat-value teal">${Math.round(totals[wid]*100)/100}<span style="font-size:13px;font-weight:700;color:var(--text3);"> 시간</span></div>
+    </div>
+  `).join('');
 }
 
 function workerName(id){
@@ -1382,105 +1726,218 @@ function deleteWorkLog(){
 
 <script>
 /* ============================================
-   3. 당일 식사관리
+   3. 당일 식사관리 (날짜+점심/저녁 별 1행, 학생 배열)
    ============================================ */
 let _mealsLoaded = false;
-let _mealStudents = [];     // 활성 학생 목록 (캐시)
-let _mealRecords = {};      // student_id -> record
-let _mealFilter = 'all';
-let _mealCurrentDate = todayStr();
+let _mealRecords = [];       // 전체 meal_records 캐시
+let _mealAllStudents = [];   // 활성 학생 목록 (캐시)
+let _mealSelectedIds = [];   // 등록 모달에서 체크된 학생 id 목록
+let _mealDetailCurrentId = null;
+
+const MEAL_TYPE_LABEL = { lunch:'점심', dinner:'저녁' };
 
 async function initMeals(){
-  document.getElementById('meal-date-picker').value = _mealCurrentDate;
   _mealsLoaded = true;
-  await loadMealsForDate(_mealCurrentDate);
+  await loadMealStudentsIfNeeded();
+  await loadMealRecords();
+  makeSortable('meal-table', ()=>filteredMealRecords(), renderMealRows);
 }
 
-async function onMealDateChange(){
-  _mealCurrentDate = document.getElementById('meal-date-picker').value || todayStr();
-  await loadMealsForDate(_mealCurrentDate);
-}
-
-async function loadMealsForDate(date){
-  document.getElementById('meal-date-label').textContent = fmtDate(date);
-  const wrap = document.getElementById('meal-list-wrap');
-  wrap.innerHTML = `<div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div>`;
-
-  if(!_mealStudents.length){
-    _mealStudents = await sb.get('students', '&is_active=eq.true&order=name.asc');
+async function loadMealStudentsIfNeeded(){
+  if(!_mealAllStudents.length){
+    _mealAllStudents = await sb.get('students', '&is_active=eq.true&order=name.asc');
   }
-  const records = await sb.get('meal_records', `&meal_date=eq.${date}`);
-  _mealRecords = {};
-  records.forEach(r=>{ _mealRecords[r.student_id] = r; });
-
-  renderMealStats();
-  renderMealList();
 }
 
-function renderMealStats(){
-  const total = _mealStudents.length;
-  const ate = _mealStudents.filter(s=>_mealRecords[s.id]?.ate).length;
-  const not = total - ate;
-  document.getElementById('meal-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-label">총 학생</div><div class="stat-value">${total}</div></div>
-    <div class="stat-card"><div class="stat-label">식사</div><div class="stat-value teal">${ate}</div></div>
-    <div class="stat-card"><div class="stat-label">미식사</div><div class="stat-value coral">${not}</div></div>
-  `;
+async function loadMealRecords(){
+  _mealRecords = await sb.get('meal_records', '&order=meal_date.desc');
+  renderMealRecords();
 }
 
-function setMealFilter(f){
-  _mealFilter = f;
-  document.querySelectorAll('#meal-filter-chips .chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===f));
-  renderMealList();
+function studentNamesByIds(ids){
+  if(!ids || !ids.length) return [];
+  return ids.map(id=>{
+    const s = _mealAllStudents.find(x=>x.id===id);
+    return s ? s.name : '(삭제된 학생)';
+  });
 }
 
-function renderMealList(){
-  const wrap = document.getElementById('meal-list-wrap');
-  let list = _mealStudents;
-  if(_mealFilter==='ate') list = list.filter(s=>_mealRecords[s.id]?.ate);
-  else if(_mealFilter==='not') list = list.filter(s=>!_mealRecords[s.id]?.ate);
+function filteredMealRecords(){
+  const dateF = document.getElementById('meal-filter-date').value;
+  let list = _mealRecords;
+  if(dateF) list = list.filter(r=>r.meal_date===dateF);
+  // 정렬 보조용 count 필드 부여
+  return list.map(r=>({...r, count:(r.student_ids||[]).length}));
+}
+function clearMealDateFilter(){
+  document.getElementById('meal-filter-date').value='';
+  renderMealRecords();
+}
 
-  if(!list.length){
-    wrap.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text3);">해당하는 학생이 없습니다.</div>`;
+function renderMealRecords(){
+  const data = filteredMealRecords();
+  document.getElementById('meal-count-label').textContent = `전체 ${data.length}건`;
+  renderMealRows(data);
+}
+
+function renderMealRows(data){
+  const tbody = document.getElementById('meal-tbody');
+  if(!data.length){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">등록된 식사 신청이 없습니다.</td></tr>`;
     return;
   }
-
-  wrap.innerHTML = `<div style="display:flex;flex-direction:column;">` + list.map((s,i)=>{
-    const rec = _mealRecords[s.id];
-    const checked = !!rec?.ate;
+  tbody.innerHTML = data.map(r=>{
+    const names = studentNamesByIds(r.student_ids);
+    const namesPreview = names.length ? names.join(', ') : '-';
+    const typeBadge = r.meal_type==='lunch'
+      ? `<span class="badge" style="background:var(--teal-l);color:var(--teal);">🍚 점심</span>`
+      : `<span class="badge" style="background:var(--amber-l);color:var(--amber);">🌙 저녁</span>`;
     return `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;${i!==list.length-1?'border-bottom:1px solid var(--border);':''}">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div class="meal-check ${checked?'checked':''}" onclick="toggleMeal('${s.id}')">${checked?'✓':''}</div>
-          <div>
-            <div style="font-weight:700;font-size:13px;">${escapeHtml(s.name)}</div>
-            <div style="font-size:11px;color:var(--text3);">${escapeHtml(s.grade)||''} ${escapeHtml(s.school)?'· '+escapeHtml(s.school):''}</div>
-          </div>
-        </div>
-        ${checked && rec.checked_at ? `<div style="font-size:11px;color:var(--text3);">${fmtDateTime(rec.checked_at).split(' ')[1]} 체크</div>` : ''}
-      </div>
+      <tr onclick="openMealDetail('${r.id}')">
+        <td><strong>${fmtDate(r.meal_date)}</strong></td>
+        <td>${typeBadge}</td>
+        <td><strong>${names.length}명</strong></td>
+        <td class="td-memo" style="max-width:340px;">${escapeHtml(namesPreview)}</td>
+      </tr>
     `;
-  }).join('') + `</div>`;
+  }).join('');
 }
 
-async function toggleMeal(studentId){
-  const existing = _mealRecords[studentId];
-  const newAte = !existing?.ate;
-  const now = new Date().toISOString();
+/* ---- 상세보기 모달 ---- */
+function openMealDetail(id){
+  _mealDetailCurrentId = id;
+  const r = _mealRecords.find(x=>x.id===id);
+  if(!r) return;
+  const names = studentNamesByIds(r.student_ids);
+  document.getElementById('m-meal-detail-title').textContent = `${fmtDate(r.meal_date)} · ${MEAL_TYPE_LABEL[r.meal_type]}`;
+  document.getElementById('m-meal-detail-body').innerHTML = `
+    <div class="stat-row" style="margin-bottom:18px;">
+      <div class="stat-card"><div class="stat-label">날짜</div><div class="stat-value" style="font-size:18px;">${fmtDate(r.meal_date)}</div></div>
+      <div class="stat-card"><div class="stat-label">구분</div><div class="stat-value" style="font-size:18px;">${MEAL_TYPE_LABEL[r.meal_type]}</div></div>
+      <div class="stat-card"><div class="stat-label">인원</div><div class="stat-value teal">${names.length}명</div></div>
+    </div>
+    <div class="field">
+      <label>신청 학생 명단</label>
+      ${names.length
+        ? `<div class="checkbox-row">${names.map(n=>`<span class="checkbox-pill checked">${escapeHtml(n)}</span>`).join('')}</div>`
+        : `<div style="font-size:12px;color:var(--text3);">신청한 학생이 없습니다.</div>`
+      }
+    </div>
+  `;
+  openModal('m-meal-detail');
+}
 
-  if(existing && existing.id){
-    const result = await sb.update('meal_records', existing.id, {ate:newAte, checked_at: newAte?now:null});
-    if(!result) return;
-    _mealRecords[studentId] = result;
+function editMealFromDetail(){
+  const id = _mealDetailCurrentId;
+  closeModal('m-meal-detail');
+  openMealModal(id);
+}
+
+function deleteMealRecord(){
+  const id = _mealDetailCurrentId;
+  if(!id) return;
+  confirmAction('이 식사 신청 기록을 삭제할까요?', async ()=>{
+    const ok = await sb.delete('meal_records', id);
+    if(!ok) return;
+    closeModal('m-meal-detail');
+    toast('식사 신청 기록을 삭제했습니다');
+    await loadMealRecords();
+  });
+}
+
+/* ---- 등록/수정 모달 ---- */
+async function openMealModal(existingId){
+  await loadMealStudentsIfNeeded();
+  document.getElementById('meal-edit-id').value = existingId||'';
+  document.getElementById('meal-student-search').value='';
+
+  if(existingId){
+    const r = _mealRecords.find(x=>x.id===existingId);
+    document.getElementById('m-meal-title').textContent = '식사 신청 수정';
+    document.getElementById('meal-form-date').value = r.meal_date;
+    document.getElementById('meal-form-type').value = r.meal_type;
+    _mealSelectedIds = [...(r.student_ids||[])];
+    document.getElementById('meal-existing-notice').style.display='none';
   }else{
-    const result = await sb.insert('meal_records', {
-      student_id: studentId, meal_date: _mealCurrentDate, ate:newAte, checked_at: newAte?now:null
-    });
-    if(!result) return;
-    _mealRecords[studentId] = result;
+    document.getElementById('m-meal-title').textContent = '식사 신청 등록';
+    document.getElementById('meal-form-date').value = todayStr();
+    document.getElementById('meal-form-type').value = 'lunch';
+    _mealSelectedIds = [];
+    await onMealFormDateOrTypeChange(); // 같은 날짜+구분 기존기록 있으면 자동 로드
   }
-  renderMealStats();
-  renderMealList();
+  renderMealStudentCheckboxes();
+  openModal('m-meal');
+}
+
+// 날짜 또는 구분 변경 시: 이미 등록된 행이 있으면 자동으로 불러와 수정모드로 전환
+async function onMealFormDateOrTypeChange(){
+  const date = document.getElementById('meal-form-date').value;
+  const type = document.getElementById('meal-form-type').value;
+  if(!date) return;
+
+  const existing = _mealRecords.find(r=>r.meal_date===date && r.meal_type===type);
+  const noticeEl = document.getElementById('meal-existing-notice');
+  if(existing){
+    document.getElementById('meal-edit-id').value = existing.id;
+    _mealSelectedIds = [...(existing.student_ids||[])];
+    noticeEl.style.display='block';
+  }else{
+    document.getElementById('meal-edit-id').value = '';
+    _mealSelectedIds = []; // 다른 날짜/구분으로 전환 시 이전 선택 잔여를 비움
+    noticeEl.style.display='none';
+  }
+  renderMealStudentCheckboxes();
+}
+
+function renderMealStudentCheckboxes(){
+  const q = (document.getElementById('meal-student-search').value||'').trim().toLowerCase();
+  let list = _mealAllStudents;
+  if(q) list = list.filter(s=>(s.name||'').toLowerCase().includes(q));
+
+  const wrap = document.getElementById('meal-student-checkbox-list');
+  if(!list.length){
+    wrap.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:8px;">검색 결과가 없습니다.</div>`;
+  }else{
+    wrap.innerHTML = list.map(s=>{
+      const checked = _mealSelectedIds.includes(s.id);
+      return `
+        <label class="checkbox-pill ${checked?'checked':''}" style="justify-content:space-between;width:100%;">
+          <span>${escapeHtml(s.name)} <span style="color:var(--text3);font-weight:500;">${escapeHtml(s.grade)||''}</span></span>
+          <input type="checkbox" ${checked?'checked':''} onchange="toggleMealStudentCheck('${s.id}', this.checked)">
+        </label>
+      `;
+    }).join('');
+  }
+  document.getElementById('meal-form-count').textContent = `(${_mealSelectedIds.length}명)`;
+}
+
+function toggleMealStudentCheck(studentId, isChecked){
+  if(isChecked){
+    if(!_mealSelectedIds.includes(studentId)) _mealSelectedIds.push(studentId);
+  }else{
+    _mealSelectedIds = _mealSelectedIds.filter(id=>id!==studentId);
+  }
+  renderMealStudentCheckboxes();
+}
+
+async function saveMealRecord(){
+  const date = document.getElementById('meal-form-date').value;
+  const type = document.getElementById('meal-form-type').value;
+  if(!date){ toast('날짜를 선택해주세요','error'); return; }
+
+  const data = { meal_date: date, meal_type: type, student_ids: _mealSelectedIds };
+  const editId = document.getElementById('meal-edit-id').value;
+
+  let result;
+  if(editId){
+    result = await sb.update('meal_records', editId, data);
+  }else{
+    result = await sb.insert('meal_records', data);
+  }
+  if(!result) return;
+  closeModal('m-meal');
+  toast(editId ? '식사 신청을 수정했습니다' : '식사 신청을 등록했습니다');
+  await loadMealRecords();
 }
 </script>
 
@@ -1491,9 +1948,12 @@ async function toggleMeal(studentId){
 let _handovers = [];
 let _handoverRecipients = {}; // handover_id -> [recipient rows]
 let _handoverLoaded = false;
-let _pendingRecipientChips = []; // 등록 모달에서 추가 중인 인수자 이름 목록
+let _pendingRecipientIds = []; // 등록 모달에서 선택 중인 인수자(근무자) id 목록
 
 async function loadHandovers(){
+  if(!_workers.length){
+    _workers = await sb.get('workers', '&order=created_at.asc');
+  }
   _handovers = await sb.get('handovers', '&order=created_at.desc');
   const allRecipients = await sb.get('handover_recipients');
   _handoverRecipients = {};
@@ -1503,6 +1963,7 @@ async function loadHandovers(){
   });
   _handoverLoaded = true;
   renderHandovers();
+  makeSortable('handover-table', ()=>handoverRowsForSort(), renderHandoverRows);
 }
 
 function handoverStatus(id){
@@ -1512,90 +1973,99 @@ function handoverStatus(id){
   return { allConfirmed, label: allConfirmed ? '🟢 확인완료' : '🔴 미확인' };
 }
 
+// 정렬 헬퍼가 쓸 수 있도록 status를 평탄화한 필드로 부여
+function handoverRowsForSort(){
+  return _handovers.map(h=>({
+    ...h,
+    status: handoverStatus(h.id).allConfirmed ? 1 : 0,
+  }));
+}
+
 function renderHandovers(){
   document.getElementById('handover-count-label').textContent = `전체 ${_handovers.length}건`;
-  const wrap = document.getElementById('handover-list');
-  if(!_handovers.length){
-    wrap.innerHTML = `<div class="card card-pad" style="text-align:center;color:var(--text3);">등록된 인수인계가 없습니다.</div>`;
+  renderHandoverRows(handoverRowsForSort());
+}
+
+function renderHandoverRows(data){
+  const tbody = document.getElementById('handover-tbody');
+  if(!data.length){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">등록된 인수인계가 없습니다.</td></tr>`;
     return;
   }
-  wrap.innerHTML = _handovers.map(h=>{
+  tbody.innerHTML = data.map(h=>{
     const recipients = _handoverRecipients[h.id]||[];
     const status = handoverStatus(h.id);
     const names = recipients.map(r=>r.recipient_name).join(', ') || '-';
+    const contentPreview = (h.content||'').replace(/\n/g,' ');
     return `
-      <div class="board-row" onclick="openHandoverDetail('${h.id}')">
-        <div class="board-row-main">
-          <div class="board-row-title">
-            <span class="badge ${status.allConfirmed?'badge-green':'badge-red'}">${status.label}</span>
-            ${escapeHtml(h.title)}
-          </div>
-          <div class="board-row-meta">
-            <span>작성일 ${fmtDateTime(h.created_at)}</span>
-            <span>작성자 ${escapeHtml(h.author)}</span>
-            <span>인수자 ${escapeHtml(names)}</span>
-          </div>
-        </div>
-      </div>
+      <tr onclick="openHandoverDetail('${h.id}')">
+        <td><strong>${fmtDateTimeWithDow(h.created_at)}</strong></td>
+        <td>${escapeHtml(h.author)}</td>
+        <td class="td-memo" style="max-width:260px;">${escapeHtml(contentPreview)||'-'}</td>
+        <td class="td-memo" style="max-width:180px;">${escapeHtml(names)}</td>
+        <td><span class="badge ${status.allConfirmed?'badge-green':'badge-red'}">${status.label}</span></td>
+      </tr>
     `;
   }).join('');
 }
 
 /* ---- 등록 모달 ---- */
 function openHandoverModal(){
-  document.getElementById('handover-title-input').value='';
   document.getElementById('handover-content').value='';
-  document.getElementById('handover-author').value='';
-  document.getElementById('handover-recipient-input').value='';
-  _pendingRecipientChips = [];
-  renderRecipientChips();
+  document.getElementById('handover-date-display').textContent = fmtDateTimeWithDow(new Date().toISOString());
+  _pendingRecipientIds = [];
+
+  const activeWorkers = _workers.filter(w=>w.is_active);
+  const authorSel = document.getElementById('handover-author-select');
+  authorSel.innerHTML = activeWorkers.length
+    ? activeWorkers.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('')
+    : '<option value="">근무자를 먼저 등록하세요</option>';
+
+  renderRecipientCheckboxes();
   openModal('m-handover');
 }
-function addRecipientChip(){
-  const input = document.getElementById('handover-recipient-input');
-  const name = input.value.trim();
-  if(!name) return;
-  if(!_pendingRecipientChips.includes(name)) _pendingRecipientChips.push(name);
-  input.value='';
-  renderRecipientChips();
-}
-function removeRecipientChip(name){
-  _pendingRecipientChips = _pendingRecipientChips.filter(n=>n!==name);
-  renderRecipientChips();
-}
-function renderRecipientChips(){
-  const wrap = document.getElementById('handover-recipient-chips');
-  if(!_pendingRecipientChips.length){
-    wrap.innerHTML = `<div style="font-size:12px;color:var(--text3);">추가된 인수자가 없습니다.</div>`;
+
+function renderRecipientCheckboxes(){
+  const wrap = document.getElementById('handover-recipient-checkboxes');
+  const activeWorkers = _workers.filter(w=>w.is_active);
+  if(!activeWorkers.length){
+    wrap.innerHTML = `<div style="font-size:12px;color:var(--text3);">근무자를 먼저 등록하세요 (근무일지 &gt; 근무자 관리)</div>`;
     return;
   }
-  wrap.innerHTML = _pendingRecipientChips.map(name=>`
-    <span class="checkbox-pill checked" style="cursor:pointer;" onclick="removeRecipientChip('${escapeHtml(name)}')">
-      ${escapeHtml(name)} ✕
-    </span>
-  `).join('');
+  wrap.innerHTML = activeWorkers.map(w=>{
+    const checked = _pendingRecipientIds.includes(w.id);
+    return `
+      <label class="checkbox-pill ${checked?'checked':''}">
+        <input type="checkbox" ${checked?'checked':''} onchange="toggleRecipientCheck('${w.id}', this.checked)">
+        ${escapeHtml(w.name)}
+      </label>
+    `;
+  }).join('');
 }
-// Enter 키로도 인수자 추가
-document.addEventListener('DOMContentLoaded', ()=>{
-  const input = document.getElementById('handover-recipient-input');
-  if(input){
-    input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addRecipientChip(); } });
+
+function toggleRecipientCheck(workerId, isChecked){
+  if(isChecked){
+    if(!_pendingRecipientIds.includes(workerId)) _pendingRecipientIds.push(workerId);
+  }else{
+    _pendingRecipientIds = _pendingRecipientIds.filter(id=>id!==workerId);
   }
-});
+  renderRecipientCheckboxes();
+}
 
 async function saveHandover(){
-  const title = document.getElementById('handover-title-input').value.trim();
-  const author = document.getElementById('handover-author').value.trim();
-  if(!title){ toast('제목을 입력해주세요','error'); return; }
-  if(!author){ toast('작성자를 입력해주세요','error'); return; }
-  if(!_pendingRecipientChips.length){ toast('인수자를 1명 이상 추가해주세요','error'); return; }
-
+  const authorId = document.getElementById('handover-author-select').value;
   const content = document.getElementById('handover-content').value.trim();
-  const handover = await sb.insert('handovers', {title, content, author});
+  if(!content){ toast('내용을 입력해주세요','error'); return; }
+  if(!authorId){ toast('작성자를 선택해주세요','error'); return; }
+  if(!_pendingRecipientIds.length){ toast('인수자를 1명 이상 선택해주세요','error'); return; }
+
+  const authorName = _workers.find(w=>w.id===authorId)?.name || '';
+  const handover = await sb.insert('handovers', {content, author:authorName});
   if(!handover) return;
 
-  for(const name of _pendingRecipientChips){
-    await sb.insert('handover_recipients', { handover_id: handover.id, recipient_name: name, is_confirmed:false });
+  for(const workerId of _pendingRecipientIds){
+    const recipientName = _workers.find(w=>w.id===workerId)?.name || '';
+    await sb.insert('handover_recipients', { handover_id: handover.id, recipient_name: recipientName, is_confirmed:false });
   }
 
   closeModal('m-handover');
@@ -1610,7 +2080,7 @@ function openHandoverDetail(id){
   _currentHandoverId = id;
   const h = _handovers.find(x=>x.id===id);
   const recipients = _handoverRecipients[id]||[];
-  document.getElementById('m-handover-detail-title').textContent = h.title;
+  document.getElementById('m-handover-detail-title').textContent = fmtDateTimeWithDow(h.created_at);
 
   const recipientHtml = recipients.map(r=>`
     <div class="recipient-item">
@@ -1626,12 +2096,9 @@ function openHandoverDetail(id){
   `).join('');
 
   document.getElementById('m-handover-detail-body').innerHTML = `
+    <div class="field"><label>작성자</label><div style="font-size:13px;font-weight:700;">${escapeHtml(h.author)}</div></div>
     <div class="field"><label>내용</label>
       <div style="background:var(--bg);border-radius:10px;padding:14px;font-size:13px;white-space:pre-wrap;line-height:1.6;">${escapeHtml(h.content)||'-'}</div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>작성자</label><div style="font-size:13px;font-weight:700;">${escapeHtml(h.author)}</div></div>
-      <div class="field"><label>작성시간</label><div style="font-size:13px;font-weight:700;">${fmtDateTime(h.created_at)}</div></div>
     </div>
     <div class="field">
       <label>인수자별 확인 현황</label>
@@ -1695,11 +2162,12 @@ async function initHomeDashboard(){
 async function loadHomeStats(){
   const today = todayStr();
 
-  // 오늘 점심/저녁 신청 인원 (meal_records에 lunch/dinner 구분이 없으므로
-  // ate=true 전체를 "신청"으로 보고, 점심/저녁은 동일 체크를 공유하는 단순 모델로 안내)
-  const mealsToday = await sb.get('meal_records', `&meal_date=eq.${today}&ate=eq.true`);
-  document.getElementById('home-stat-lunch').textContent = mealsToday.length;
-  document.getElementById('home-stat-dinner').textContent = mealsToday.length;
+  // 오늘 점심/저녁 신청 인원
+  const mealsToday = await sb.get('meal_records', `&meal_date=eq.${today}`);
+  const lunchToday = mealsToday.find(r=>r.meal_type==='lunch');
+  const dinnerToday = mealsToday.find(r=>r.meal_type==='dinner');
+  document.getElementById('home-stat-lunch').textContent = (lunchToday?.student_ids||[]).length;
+  document.getElementById('home-stat-dinner').textContent = (dinnerToday?.student_ids||[]).length;
 
   // 이번주 스케줄 확인 필요 학생
   const students = await sb.get('students', '&is_active=eq.true&check_day=not.is.null');
@@ -1710,8 +2178,18 @@ async function loadHomeStats(){
   if(!needCheck.length){
     namesWrap.innerHTML = `<div class="checkneed-empty">모두 확인 완료했어요 🎉</div>`;
   }else{
-    namesWrap.innerHTML = needCheck.map(s=>`<span class="checkneed-chip">${escapeHtml(s.name)}</span>`).join('');
+    namesWrap.innerHTML = needCheck.map(s=>
+      `<span class="checkneed-chip" onclick="event.stopPropagation(); goToScheduleStudent('${s.id}')">${escapeHtml(s.name)}</span>`
+    ).join('');
   }
+}
+
+async function goToScheduleStudent(studentId){
+  navTo('schedule');
+  if(!_scheduleLoaded){
+    await loadScheduleList();
+  }
+  openScheduleDetail(studentId);
 }
 
 /* ---- 일정 달력 ---- */
@@ -1731,7 +2209,7 @@ async function loadCalendarMonth(){
   const endStr = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
 
   const [meals, workLogs, handovers] = await Promise.all([
-    sb.get('meal_records', `&meal_date=gte.${startStr}&meal_date=lte.${endStr}&ate=eq.true`),
+    sb.get('meal_records', `&meal_date=gte.${startStr}&meal_date=lte.${endStr}`),
     sb.get('work_logs', `&work_date=gte.${startStr}&work_date=lte.${endStr}`),
     sb.get('handovers', `&created_at=gte.${startStr}T00:00:00&created_at=lte.${endStr}T23:59:59`)
   ]);
@@ -1739,7 +2217,7 @@ async function loadCalendarMonth(){
   // 날짜별 집계
   const byDate = {};
   function ensure(d){ if(!byDate[d]) byDate[d]={meals:0, work:0, handover:0}; return byDate[d]; }
-  meals.forEach(m=>{ ensure(m.meal_date).meals++; });
+  meals.forEach(m=>{ ensure(m.meal_date).meals += (m.student_ids||[]).length; });
   workLogs.forEach(w=>{ ensure(w.work_date).work++; });
   handovers.forEach(h=>{ const d = h.created_at.slice(0,10); ensure(d).handover++; });
 
@@ -1787,15 +2265,22 @@ async function openCalDayDetail(dateStr){
   if(!_workers.length){
     _workers = await sb.get('workers', '&order=created_at.asc');
   }
+  await loadMealStudentsIfNeeded();
 
   const [meals, workLogs, handovers] = await Promise.all([
-    sb.get('meal_records', `&meal_date=eq.${dateStr}&ate=eq.true`),
+    sb.get('meal_records', `&meal_date=eq.${dateStr}`),
     sb.get('work_logs', `&work_date=eq.${dateStr}`),
     sb.get('handovers', `&created_at=gte.${dateStr}T00:00:00&created_at=lte.${dateStr}T23:59:59`)
   ]);
 
   let html = '';
-  html += `<div class="field"><label>🍱 식사 신청</label><div style="font-size:13px;font-weight:700;">${meals.length}명 식사 체크</div></div>`;
+  const lunch = meals.find(m=>m.meal_type==='lunch');
+  const dinner = meals.find(m=>m.meal_type==='dinner');
+  html += `<div class="field"><label>🍱 식사 신청</label>`;
+  html += `<div style="display:flex;gap:10px;flex-wrap:wrap;">`;
+  html += `<div style="background:var(--teal-l);color:var(--teal);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;">점심 ${(lunch?.student_ids||[]).length}명</div>`;
+  html += `<div style="background:var(--amber-l);color:var(--amber);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;">저녁 ${(dinner?.student_ids||[]).length}명</div>`;
+  html += `</div></div>`;
 
   html += `<div class="field"><label>🕒 근무일지 (${workLogs.length}건)</label>`;
   if(!workLogs.length){
