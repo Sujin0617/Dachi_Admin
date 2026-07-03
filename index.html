@@ -217,6 +217,40 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
 .recipient-confirmed{color:var(--green);}
 .recipient-pending{color:var(--text3);}
 
+/* ===== 학원생관리: 큰 탭 ===== */
+.schedule-tab-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+@media(max-width:640px){.schedule-tab-bar{grid-template-columns:repeat(2,1fr);}}
+.schedule-tab{
+  background:var(--white);border:1.5px solid var(--border);border-radius:16px;
+  padding:18px 12px 14px;cursor:pointer;transition:all .18s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-family:inherit;
+}
+.schedule-tab:hover{border-color:var(--p2);background:var(--p-light);}
+.schedule-tab.active{background:var(--p1);border-color:var(--p1);}
+.schedule-tab-label{font-size:15px;font-weight:800;color:var(--text2);letter-spacing:-.2px;}
+.schedule-tab.active .schedule-tab-label{color:#fff;}
+.schedule-tab-count{font-size:26px;font-weight:900;color:var(--p2);line-height:1;}
+.schedule-tab.active .schedule-tab-count{color:rgba(255,255,255,.9);}
+
+/* 확인완료 날짜별 카드 */
+.done-day-card{background:var(--white);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.done-day-head{
+  padding:14px 20px;background:var(--bg);border-bottom:1px solid var(--border);
+  font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;justify-content:space-between;
+}
+.done-day-count{font-size:12px;font-weight:700;color:var(--text3);}
+.done-day-body{display:flex;flex-direction:column;}
+.done-student-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px;
+}
+.done-student-row:last-child{border-bottom:none;}
+.done-student-name{font-weight:700;}
+.done-check-info{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.done-check-day{font-size:11px;font-weight:700;color:var(--p1);background:var(--p-light);padding:3px 8px;border-radius:6px;}
+.done-check-time{font-size:11px;color:var(--text3);}
+
 /* ===== 학원생관리: 메모 타임라인 ===== */
 .note-card{
   background:var(--bg);border-radius:12px;padding:12px 14px;border-left:3px solid var(--p2);
@@ -514,21 +548,35 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
             <span class="search-ico">🔍</span>
             <input type="text" id="schedule-search" placeholder="이름 검색" oninput="renderScheduleList()">
           </div>
-          <div class="chip-row">
-            <button class="chip active" data-filter="all" onclick="setScheduleFilter('all')">전체</button>
-            <button class="chip" data-filter="today" onclick="setScheduleFilter('today')">오늘 확인 대상</button>
-            <button class="chip" data-filter="need" onclick="setScheduleFilter('need')">확인 필요</button>
-            <button class="chip" data-filter="done" onclick="setScheduleFilter('done')">확인 완료</button>
-          </div>
         </div>
       </div>
       <div class="content">
-        <div class="table-wrap card">
+        <!-- 큰 탭 -->
+        <div class="schedule-tab-bar">
+          <button class="schedule-tab active" data-filter="today" onclick="setScheduleFilter('today')">            <span class="schedule-tab-label">오늘 확인 대상</span>
+            <span class="schedule-tab-count" id="tab-count-today">0</span>
+          </button>
+          <button class="schedule-tab" data-filter="need" onclick="setScheduleFilter('need')">
+            <span class="schedule-tab-label">확인 필요</span>
+            <span class="schedule-tab-count" id="tab-count-need">0</span>
+          </button>
+          <button class="schedule-tab" data-filter="done" onclick="setScheduleFilter('done')">
+            <span class="schedule-tab-label">확인 완료</span>
+            <span class="schedule-tab-count" id="tab-count-done">0</span>
+          </button>
+          <button class="schedule-tab" data-filter="all" onclick="setScheduleFilter('all')">
+            <span class="schedule-tab-label">전체</span>
+            <span class="schedule-tab-count" id="tab-count-all">0</span>
+          </button>
+        </div>
+
+        <!-- 일반 학생 목록 (오늘/필요/전체 탭) -->
+        <div id="schedule-table-wrap" class="table-wrap card">
           <table class="data-table" id="schedule-table">
             <thead>
               <tr>
                 <th data-key="name">이름<span class="sort-arrow"></span></th>
-                <th data-key="check_day">확인요일<span class="sort-arrow"></span></th>
+                <th data-key="check_days_sort">확인요일<span class="sort-arrow"></span></th>
                 <th data-key="last_checked_at">최종확인일자<span class="sort-arrow"></span></th>
                 <th data-key="needCheck">이번주 상태<span class="sort-arrow"></span></th>
               </tr>
@@ -537,6 +585,11 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
               <tr class="empty-row"><td colspan="4"><div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div></td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- 확인 완료 탭: 날짜별 누적 뷰 -->
+        <div id="schedule-done-wrap" style="display:none;">
+          <div id="schedule-done-list" style="display:flex;flex-direction:column;gap:16px;"></div>
         </div>
       </div>
     </section>
@@ -707,6 +760,18 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
         <div class="field"><label>수강과목</label><input type="text" id="student-subjects" placeholder="예: 수학, 영어"></div>
         <div class="field"><label>등록일</label><input type="date" id="student-registered-at"></div>
       </div>
+      <div class="field">
+        <label>확인요일 <span style="color:var(--text3);font-weight:500;">— 학원생관리에서 스케줄 확인을 해야 하는 요일 (여러 개 선택 가능)</span></label>
+        <div class="chip-row" id="student-check-days-chips">
+          <button type="button" class="chip" data-day="1" onclick="toggleStudentCheckDay(1)">월요일</button>
+          <button type="button" class="chip" data-day="2" onclick="toggleStudentCheckDay(2)">화요일</button>
+          <button type="button" class="chip" data-day="3" onclick="toggleStudentCheckDay(3)">수요일</button>
+          <button type="button" class="chip" data-day="4" onclick="toggleStudentCheckDay(4)">목요일</button>
+          <button type="button" class="chip" data-day="5" onclick="toggleStudentCheckDay(5)">금요일</button>
+          <button type="button" class="chip" data-day="6" onclick="toggleStudentCheckDay(6)">토요일</button>
+          <button type="button" class="chip" data-day="0" onclick="toggleStudentCheckDay(0)">일요일</button>
+        </div>
+      </div>
       <div class="field"><label>메모</label><textarea id="student-memo" placeholder="간단 메모"></textarea></div>
       <div class="field"><label>상담메모</label><textarea id="student-counsel-memo" placeholder="상담 관련 메모"></textarea></div>
     </div>
@@ -727,30 +792,23 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
     </div>
     <div class="modal-body">
       <input type="hidden" id="schedule-student-id">
-      <div class="field-row">
-        <div class="field">
-          <label>확인요일 <span style="color:var(--text3);font-weight:500;">— 매주 스케줄을 확인해줘야 하는 요일</span></label>
-          <select id="schedule-check-day" onchange="onScheduleCheckDayChange()">
-            <option value="">지정 안함</option>
-            <option value="1">월요일</option>
-            <option value="2">화요일</option>
-            <option value="3">수요일</option>
-            <option value="4">목요일</option>
-            <option value="5">금요일</option>
-            <option value="6">토요일</option>
-            <option value="0">일요일</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>최종확인일자</label>
-          <div style="font-size:13px;font-weight:700;padding:10px 0;" id="schedule-last-checked-display">-</div>
+      <div class="field">
+        <label>확인요일 <span style="color:var(--text3);font-weight:500;">— 매주 스케줄을 확인해줘야 하는 요일 (여러 개 선택 가능)</span></label>
+        <div class="chip-row" id="schedule-check-days-chips">
+          <button type="button" class="chip" data-day="1" onclick="toggleScheduleCheckDay(1)">월요일</button>
+          <button type="button" class="chip" data-day="2" onclick="toggleScheduleCheckDay(2)">화요일</button>
+          <button type="button" class="chip" data-day="3" onclick="toggleScheduleCheckDay(3)">수요일</button>
+          <button type="button" class="chip" data-day="4" onclick="toggleScheduleCheckDay(4)">목요일</button>
+          <button type="button" class="chip" data-day="5" onclick="toggleScheduleCheckDay(5)">금요일</button>
+          <button type="button" class="chip" data-day="6" onclick="toggleScheduleCheckDay(6)">토요일</button>
+          <button type="button" class="chip" data-day="0" onclick="toggleScheduleCheckDay(0)">일요일</button>
         </div>
       </div>
-      <div class="field" id="schedule-check-status-wrap" style="display:none;background:var(--bg);border-radius:10px;padding:12px 14px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <span id="schedule-check-status-badge"></span>
-          <button type="button" class="btn btn-primary btn-sm" onclick="markScheduleCheckedNow()">이번주 확인완료</button>
-        </div>
+
+      <!-- 이번주 요일별 체크 현황 -->
+      <div class="field" id="schedule-weekly-checks-wrap" style="display:none;">
+        <label>이번주 체크 현황</label>
+        <div id="schedule-weekly-checks-list" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
 
       <div class="field" style="margin-top:24px;">
@@ -995,32 +1053,81 @@ const DAY_LABELS = ['일','월','화','수','목','금','토'];
 function getThisMondayDate(){
   const d = new Date();
   d.setHours(0,0,0,0);
-  const dow = d.getDay(); // 0=일 ~ 6=토
+  const dow = d.getDay();
   const diffToMonday = dow===0 ? 6 : dow-1;
   d.setDate(d.getDate()-diffToMonday);
   return d;
 }
-// 학생의 확인요일이 이미 이번주에 지났는지 (오늘 포함)
+
+// ISO 주차 키 생성: "YYYY-WNN" (월요일 시작)
+function getWeekKey(date){
+  const d = date ? new Date(date) : new Date();
+  d.setHours(0,0,0,0);
+  // 목요일 기준 ISO 주차 계산
+  const thursday = new Date(d);
+  thursday.setDate(d.getDate() - (d.getDay()===0?6:d.getDay()-1) + 3);
+  const firstThursday = new Date(thursday.getFullYear(), 0, 4);
+  const weekNum = Math.round((thursday - firstThursday) / 604800000) + 1;
+  return `${thursday.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
+}
+
+// 이번주 키
+function thisWeekKey(){ return getWeekKey(); }
+
+// 특정 요일이 이번주에 이미 지났는지 (오늘 포함)
 function isCheckDayPassedThisWeek(checkDay){
   if(checkDay===null || checkDay===undefined || checkDay==='') return false;
   const monday = getThisMondayDate();
   const checkDate = new Date(monday);
-  const offset = Number(checkDay)===0 ? 6 : Number(checkDay)-1; // 월요일=0 ... 일요일=6
+  const offset = Number(checkDay)===0 ? 6 : Number(checkDay)-1;
   checkDate.setDate(checkDate.getDate()+offset);
   const now = new Date(); now.setHours(0,0,0,0);
   return checkDate <= now;
 }
-// 학생이 이번주에 이미 확인 처리됐는지 (last_checked_at이 이번주 월요일 이후인지)
-function isCheckedThisWeek(lastCheckedAt){
-  if(!lastCheckedAt) return false;
-  const monday = getThisMondayDate();
-  return new Date(lastCheckedAt) >= monday;
+
+// 학생의 확인요일 목록 (check_days 배열 우선, 구버전 check_day 호환)
+function getStudentCheckDays(student){
+  if(Array.isArray(student.check_days) && student.check_days.length) return student.check_days;
+  if(student.check_day!==null && student.check_day!==undefined && student.check_day!=='') return [Number(student.check_day)];
+  return [];
 }
-// 확인요일이 지정돼 있고, 이번주 확인요일이 지났는데 아직 확인 안 된 학생인지
+
+// 이번주 특정 요일의 체크 시각 (없으면 null)
+function getWeeklyDayCheck(student, day){
+  const checks = student.weekly_checks || {};
+  const week = checks[thisWeekKey()] || {};
+  return week[String(day)] || null;
+}
+
+// 이번주 특정 요일이 체크됐는지
+function isDayCheckedThisWeek(student, day){
+  return !!getWeeklyDayCheck(student, day);
+}
+
+// 이번주에 지난 요일 중 미체크된 게 하나라도 있으면 true
 function needsScheduleCheck(student){
-  if(student.check_day===null || student.check_day===undefined || student.check_day==='') return false;
-  if(!isCheckDayPassedThisWeek(student.check_day)) return false;
-  return !isCheckedThisWeek(student.last_checked_at);
+  const days = getStudentCheckDays(student);
+  if(!days.length) return false;
+  return days.some(d=>isCheckDayPassedThisWeek(d) && !isDayCheckedThisWeek(student, d));
+}
+
+// 호환용: 이번주 전체 확인여부 (하나라도 체크됐는지 — 상태뱃지용)
+function isAnyCheckedThisWeek(student){
+  const days = getStudentCheckDays(student);
+  return days.some(d=>isDayCheckedThisWeek(student, d));
+}
+
+// weekly_checks 전체에서 가장 최근 체크 시각을 포맷해서 반환
+function getLatestCheckTime(student){
+  const checks = student.weekly_checks || {};
+  let latest = null;
+  Object.values(checks).forEach(weekData=>{
+    if(typeof weekData!=='object') return;
+    Object.values(weekData).forEach(ts=>{
+      if(ts && (!latest || ts > latest)) latest = ts;
+    });
+  });
+  return latest ? fmtDateTime(latest) : '-';
 }
 function fmtDateTime(iso){
   if(!iso)return '';
@@ -1028,6 +1135,13 @@ function fmtDateTime(iso){
   const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),day=String(dt.getDate()).padStart(2,'0');
   const hh=String(dt.getHours()).padStart(2,'0'),mm=String(dt.getMinutes()).padStart(2,'0');
   return `${y}.${m}.${day} ${hh}:${mm}`;
+}
+// MM.DD (요일) 형식 — 학원생관리 체크 시각 표시용
+function fmtCheckDate(iso){
+  if(!iso)return '';
+  const dt=new Date(iso);
+  const m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0');
+  return `${m}.${d} (${DAY_LABELS[dt.getDay()]})`;
 }
 // 년.월.일 (요일) 시:분 형식 — 인수인계 등에서 날짜를 자세히 보여줄 때 사용
 function fmtDateTimeWithDow(iso){
@@ -1239,14 +1353,34 @@ function openStudentModal(id){
     document.getElementById('student-registered-at').value = s.registered_at||'';
     document.getElementById('student-memo').value = s.memo||'';
     document.getElementById('student-counsel-memo').value = s.counsel_memo||'';
+    renderStudentCheckDaysChips(getStudentCheckDays(s));
   }else{
     document.getElementById('m-student-title').textContent = '학생 추가';
     ['student-name','student-school','student-grade','student-mentor','student-phone',
      'student-parent-phone','student-subjects','student-memo','student-counsel-memo']
       .forEach(id2=>document.getElementById(id2).value='');
     document.getElementById('student-registered-at').value = todayStr();
+    renderStudentCheckDaysChips([]);
   }
   openModal('m-student');
+}
+
+// 원생등록 모달 확인요일 칩 렌더
+function renderStudentCheckDaysChips(selectedDays){
+  document.querySelectorAll('#student-check-days-chips .chip').forEach(chip=>{
+    chip.classList.toggle('active', selectedDays.includes(Number(chip.dataset.day)));
+  });
+}
+
+// 원생등록 모달에서 요일 토글 (저장은 saveStudent 시 한꺼번에)
+function toggleStudentCheckDay(day){
+  const chip = document.querySelector(`#student-check-days-chips .chip[data-day="${day}"]`);
+  if(chip) chip.classList.toggle('active');
+}
+
+// 현재 원생등록 모달에서 선택된 확인요일 목록
+function getSelectedStudentCheckDays(){
+  return [...document.querySelectorAll('#student-check-days-chips .chip.active')].map(c=>Number(c.dataset.day)).sort((a,b)=>a-b);
 }
 
 async function saveStudent(){
@@ -1263,6 +1397,7 @@ async function saveStudent(){
     registered_at: document.getElementById('student-registered-at').value || null,
     memo: document.getElementById('student-memo').value.trim(),
     counsel_memo: document.getElementById('student-counsel-memo').value.trim(),
+    check_days: getSelectedStudentCheckDays(),
   };
   const editId = document.getElementById('student-edit-id').value;
   let result;
@@ -1297,7 +1432,7 @@ function deleteStudent(){
    ============================================ */
 let _scheduleStudents = [];
 let _scheduleLoaded = false;
-let _scheduleFilter = 'all';
+let _scheduleFilter = 'today';
 let _scheduleNotesCache = []; // 현재 상세모달에서 보고 있는 학생의 메모 목록
 let _scheduleCurrentStudentId = null;
 
@@ -1310,7 +1445,7 @@ async function loadScheduleList(){
 
 function setScheduleFilter(f){
   _scheduleFilter = f;
-  document.querySelectorAll('#page-schedule .chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===f));
+  document.querySelectorAll('#page-schedule .schedule-tab').forEach(t=>t.classList.toggle('active', t.dataset.filter===f));
   renderScheduleList();
 }
 
@@ -1320,16 +1455,89 @@ function filteredScheduleStudents(){
   if(q) list = list.filter(s=>(s.name||'').toLowerCase().includes(q));
   if(_scheduleFilter==='today'){
     const todayDow = new Date().getDay();
-    list = list.filter(s=>s.check_day!=null && Number(s.check_day)===todayDow);
+    list = list.filter(s=>getStudentCheckDays(s).includes(todayDow));
   }else if(_scheduleFilter==='need') list = list.filter(s=>needsScheduleCheck(s));
-  else if(_scheduleFilter==='done') list = list.filter(s=>s.check_day!=null && !needsScheduleCheck(s));
-  return list.map(s=>({...s, needCheck: needsScheduleCheck(s) ? 1 : 0}));
+  else if(_scheduleFilter==='done') list = list.filter(s=>isAnyCheckedThisWeek(s));
+  return list.map(s=>{
+    const allChecks = s.weekly_checks || {};
+    let latestIso = null;
+    Object.values(allChecks).forEach(wd=>{ if(typeof wd==='object') Object.values(wd).forEach(ts=>{ if(ts&&(!latestIso||ts>latestIso)) latestIso=ts; }); });
+    return {...s, needCheck: needsScheduleCheck(s)?1:0, check_days_sort: getStudentCheckDays(s).join(','), last_checked_at: latestIso||''};
+  });
 }
 
 function renderScheduleList(){
+  // 탭별 카운트 업데이트
+  const all = _scheduleStudents;
+  const todayDow = new Date().getDay();
+  document.getElementById('tab-count-all').textContent = all.length;
+  document.getElementById('tab-count-today').textContent = all.filter(s=>getStudentCheckDays(s).includes(todayDow)).length;
+  document.getElementById('tab-count-need').textContent = all.filter(s=>needsScheduleCheck(s)).length;
+  document.getElementById('tab-count-done').textContent = all.filter(s=>isAnyCheckedThisWeek(s)).length;
+
   const data = filteredScheduleStudents();
   document.getElementById('schedule-count-label').textContent = `전체 ${data.length}명`;
-  renderScheduleRows(data);
+
+  if(_scheduleFilter==='done'){
+    document.getElementById('schedule-table-wrap').style.display='none';
+    document.getElementById('schedule-done-wrap').style.display='block';
+    renderDoneTab();
+  }else{
+    document.getElementById('schedule-table-wrap').style.display='block';
+    document.getElementById('schedule-done-wrap').style.display='none';
+    renderScheduleRows(data);
+  }
+}
+
+// 확인 완료 탭: 날짜별로 그룹화해서 누가/어느 요일에 체크됐는지 표시
+function renderDoneTab(){
+  const list = document.getElementById('schedule-done-list');
+  // 이번주 weekly_checks에서 체크된 항목들을 "날짜(YYYY-MM-DD)" 기준으로 그룹화
+  const byDate = {}; // { "2026-07-01": [{studentName, dayLabel, checkedAt}] }
+  _scheduleStudents.forEach(s=>{
+    const wk = s.weekly_checks || {};
+    const weekData = wk[thisWeekKey()] || {};
+    Object.entries(weekData).forEach(([dayStr, ts])=>{
+      if(!ts) return;
+      const dateKey = ts.slice(0,10); // YYYY-MM-DD
+      if(!byDate[dateKey]) byDate[dateKey]=[];
+      byDate[dateKey].push({ studentName: s.name, dayLabel: DAY_LABELS[Number(dayStr)]+'요일', checkedAt: ts });
+    });
+  });
+
+  const sortedDates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)); // 최신순
+
+  if(!sortedDates.length){
+    list.innerHTML = `<div class="card card-pad" style="text-align:center;color:var(--text3);">이번주 확인된 학생이 없습니다.</div>`;
+    return;
+  }
+
+  list.innerHTML = sortedDates.map(dateKey=>{
+    const dt = new Date(dateKey);
+    const m = String(dt.getMonth()+1).padStart(2,'0');
+    const d = String(dt.getDate()).padStart(2,'0');
+    const dow = DAY_LABELS[dt.getDay()];
+    const dateLabel = `${m}.${d} (${dow})`;
+    const rows = byDate[dateKey].sort((a,b)=>a.checkedAt.localeCompare(b.checkedAt));
+    return `
+      <div class="done-day-card">
+        <div class="done-day-head">
+          <span>${dateLabel}</span>
+          <span class="done-day-count">${rows.length}명 확인</span>
+        </div>
+        <div class="done-day-body">
+          ${rows.map(r=>`
+            <div class="done-student-row">
+              <span class="done-student-name">${escapeHtml(r.studentName)}</span>
+              <div class="done-check-info">
+                <span class="done-check-day">${r.dayLabel}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderScheduleRows(data){
@@ -1339,10 +1547,11 @@ function renderScheduleRows(data){
     return;
   }
   tbody.innerHTML = data.map(s=>{
-    const checkDayLabel = (s.check_day!==null && s.check_day!==undefined) ? DAY_LABELS[Number(s.check_day)]+'요일' : '-';
-    const lastChecked = s.last_checked_at ? fmtDateTime(s.last_checked_at) : '-';
+    const days = getStudentCheckDays(s);
+    const checkDayLabel = days.length ? days.map(d=>DAY_LABELS[d]).join(', ') : '-';
+    const lastChecked = getLatestCheckTime(s);
     let statusBadge = `<span class="badge badge-gray">미지정</span>`;
-    if(s.check_day!==null && s.check_day!==undefined){
+    if(days.length){
       statusBadge = needsScheduleCheck(s)
         ? `<span class="badge badge-red">🔴 확인 필요</span>`
         : `<span class="badge badge-green">🟢 확인완료</span>`;
@@ -1366,11 +1575,10 @@ async function openScheduleDetail(id){
 
   document.getElementById('schedule-student-id').value = id;
   document.getElementById('m-schedule-detail-title').textContent = `${s.name} 관리`;
-  document.getElementById('schedule-check-day').value = (s.check_day===null||s.check_day===undefined) ? '' : String(s.check_day);
-  document.getElementById('schedule-last-checked-display').textContent = s.last_checked_at ? fmtDateTime(s.last_checked_at) : '아직 확인한 적 없음';
   document.getElementById('schedule-new-note').value = '';
 
-  updateScheduleCheckStatusUI(s);
+  renderScheduleCheckDaysChips(s);
+  renderWeeklyChecksUI(s);
   openModal('m-schedule-detail');
 
   document.getElementById('schedule-notes-timeline').innerHTML = `<div class="spin-wrap"><div class="spinner"></div>불러오는 중...</div>`;
@@ -1378,47 +1586,103 @@ async function openScheduleDetail(id){
   renderScheduleNotesTimeline();
 }
 
-function updateScheduleCheckStatusUI(student){
-  const wrap = document.getElementById('schedule-check-status-wrap');
-  const badge = document.getElementById('schedule-check-status-badge');
-  const checkDayVal = document.getElementById('schedule-check-day').value;
-  if(checkDayVal===''){
+function renderScheduleCheckDaysChips(student){
+  const days = getStudentCheckDays(student);
+  document.querySelectorAll('#schedule-check-days-chips .chip').forEach(chip=>{
+    const d = Number(chip.dataset.day);
+    chip.classList.toggle('active', days.includes(d));
+  });
+}
+
+// 이번주 요일별 체크 현황 UI 렌더링
+function renderWeeklyChecksUI(student){
+  const days = getStudentCheckDays(student);
+  const wrap = document.getElementById('schedule-weekly-checks-wrap');
+  const list = document.getElementById('schedule-weekly-checks-list');
+
+  if(!days.length){
     wrap.style.display = 'none';
     return;
   }
   wrap.style.display = 'block';
-  if(needsScheduleCheck(student)){
-    badge.innerHTML = `<span class="badge badge-red">🔴 이번주 미확인</span>`;
-  }else if(isCheckedThisWeek(student.last_checked_at)){
-    badge.innerHTML = `<span class="badge badge-green">🟢 이번주 확인완료</span>`;
-  }else{
-    badge.innerHTML = `<span class="badge badge-gray">확인요일 전</span>`;
-  }
+
+  list.innerHTML = days.map(day=>{
+    const checkedAt = getWeeklyDayCheck(student, day);
+    const passed = isCheckDayPassedThisWeek(day);
+    const dayLabel = DAY_LABELS[day]+'요일';
+
+    if(checkedAt){
+      return `
+        <div class="recipient-item">
+          <span style="font-weight:700;">${dayLabel}</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span class="recipient-confirmed">✅ ${fmtCheckDate(checkedAt)}</span>
+            <button class="note-card-delete" onclick="unmarkDayCheck(${day})">취소</button>
+          </span>
+        </div>`;
+    }
+    // 아직 안 지난 요일도 미리 확인완료 처리 가능
+    return `
+      <div class="recipient-item">
+        <span style="font-weight:700;">${dayLabel}${!passed ? ' <span style="font-size:10px;color:var(--text3);font-weight:600;">(예정)</span>' : ''}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span class="recipient-pending">❌ 미확인</span>
+          <button class="btn btn-primary btn-sm" onclick="markDayCheck(${day})">확인완료</button>
+        </span>
+      </div>`;
+  }).join('');
 }
 
-async function onScheduleCheckDayChange(){
+// 특정 요일 확인완료 처리
+async function markDayCheck(day){
   const id = document.getElementById('schedule-student-id').value;
-  const newDay = document.getElementById('schedule-check-day').value;
-  const result = await sb.update('students', id, { check_day: newDay===''?null:Number(newDay) });
-  if(!result) return;
   const idx = _scheduleStudents.findIndex(x=>x.id===id);
-  if(idx>-1) _scheduleStudents[idx] = result;
-  updateScheduleCheckStatusUI(result);
+  if(idx===-1) return;
+  const student = _scheduleStudents[idx];
+  const weekKey = thisWeekKey();
+  const currentChecks = student.weekly_checks || {};
+  const weekData = currentChecks[weekKey] || {};
+  weekData[String(day)] = new Date().toISOString();
+  const newChecks = {...currentChecks, [weekKey]: weekData};
+  const result = await sb.update('students', id, {weekly_checks: newChecks});
+  if(!result) return;
+  _scheduleStudents[idx] = result;
+  renderWeeklyChecksUI(result);
   renderScheduleList();
+  toast(`${DAY_LABELS[day]}요일 확인완료 처리했습니다`);
 }
 
-async function markScheduleCheckedNow(){
+// 특정 요일 확인 취소
+async function unmarkDayCheck(day){
   const id = document.getElementById('schedule-student-id').value;
-  if(!id) return;
-  const now = new Date().toISOString();
-  const result = await sb.update('students', id, {last_checked_at: now});
-  if(!result) return;
   const idx = _scheduleStudents.findIndex(x=>x.id===id);
-  if(idx>-1) _scheduleStudents[idx] = result;
-  document.getElementById('schedule-last-checked-display').textContent = fmtDateTime(now);
-  updateScheduleCheckStatusUI(result);
+  if(idx===-1) return;
+  const student = _scheduleStudents[idx];
+  const weekKey = thisWeekKey();
+  const currentChecks = student.weekly_checks || {};
+  const weekData = {...(currentChecks[weekKey] || {})};
+  delete weekData[String(day)];
+  const newChecks = {...currentChecks, [weekKey]: weekData};
+  const result = await sb.update('students', id, {weekly_checks: newChecks});
+  if(!result) return;
+  _scheduleStudents[idx] = result;
+  renderWeeklyChecksUI(result);
   renderScheduleList();
-  toast('이번주 확인완료 처리했습니다');
+  toast(`${DAY_LABELS[day]}요일 확인을 취소했습니다`);
+}
+
+async function toggleScheduleCheckDay(day){
+  const id = document.getElementById('schedule-student-id').value;
+  const idx = _scheduleStudents.findIndex(x=>x.id===id);
+  if(idx===-1) return;
+  const current = getStudentCheckDays(_scheduleStudents[idx]);
+  const newDays = current.includes(day) ? current.filter(d=>d!==day) : [...current, day].sort((a,b)=>a-b);
+  const result = await sb.update('students', id, { check_days: newDays });
+  if(!result) return;
+  _scheduleStudents[idx] = result;
+  renderScheduleCheckDaysChips(result);
+  renderWeeklyChecksUI(result);
+  renderScheduleList();
 }
 
 /* ---- 메모 타임라인 ---- */
@@ -2171,8 +2435,8 @@ async function loadHomeStats(){
   document.getElementById('home-stat-lunch').textContent = (lunchToday?.student_ids||[]).length;
   document.getElementById('home-stat-dinner').textContent = (dinnerToday?.student_ids||[]).length;
 
-  // 이번주 스케줄 확인 필요 학생
-  const students = await sb.get('students', '&is_active=eq.true&check_day=not.is.null');
+  // 이번주 스케줄 확인 필요 학생 (배열 컬럼이라 DB 필터 대신 활성학생 전체를 가져와 JS에서 판별)
+  const students = await sb.get('students', '&is_active=eq.true');
   const needCheck = students.filter(s=>needsScheduleCheck(s));
   document.getElementById('home-stat-checkneed').textContent = needCheck.length;
 
