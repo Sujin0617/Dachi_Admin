@@ -379,7 +379,33 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
   .content{padding:16px 16px 60px;}
   .field-row{grid-template-columns:1fr;}
   .modal-box{max-height:92vh;}
+  /* 전체업무: 모바일에서 시간표 숨기고 세로 목록으로 */
+  .manual-timetable-view{display:none !important;}
+  .manual-list-view{display:block !important;}
+  .schedule-tab-bar{grid-template-columns:repeat(2,1fr);}
 }
+
+/* 전체업무 모바일 카드 스타일 */
+.manual-day-card{background:var(--white);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.manual-day-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;background:var(--bg);border-bottom:1px solid var(--border);
+}
+.manual-day-head-label{font-size:14px;font-weight:800;color:var(--text);}
+.manual-day-head-label.today{color:var(--p1);}
+.manual-day-count{font-size:11px;font-weight:700;color:var(--text3);}
+.manual-task-row{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;
+  transition:background .12s;
+}
+.manual-task-row:last-child{border-bottom:none;}
+.manual-task-row:hover{background:var(--p-light);}
+.manual-task-time{font-size:11px;font-weight:800;color:var(--p1);min-width:80px;padding-top:2px;flex-shrink:0;}
+.manual-task-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.4;}
+.manual-task-name.done{text-decoration:line-through;color:var(--text3);}
+.manual-task-row .star-ico{color:var(--amber);margin-right:2px;}
+.manual-empty-day{padding:14px 18px;font-size:12px;color:var(--text3);text-align:center;}
 </style>
 </head>
 <body>
@@ -420,6 +446,9 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
       </button>
       <button class="menu-item" data-page="handover" onclick="navTo('handover')">
         <span class="menu-item-ico">📋</span><span>업무 인수인계</span>
+      </button>
+      <button class="menu-item" data-page="manual" onclick="navTo('manual')">
+        <span class="menu-item-ico">📖</span><span>전체업무</span>
       </button>
     </nav>
     <div class="sidebar-foot">Supabase 연결됨</div>
@@ -730,6 +759,65 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
       </div>
     </section>
 
+    <!-- ============ 전체업무 (업무 매뉴얼) ============ -->
+    <section class="page" id="page-manual" style="display:none;">
+      <!-- 비번 잠금 화면 -->
+      <div id="manual-lock-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:20px;">
+        <div style="font-size:36px;">🔒</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);">전체업무 매뉴얼</div>
+        <div style="font-size:13px;color:var(--text3);font-weight:600;">비밀번호를 입력하세요</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="password" id="manual-pw-input" maxlength="10"
+            style="border:1.5px solid var(--border);border-radius:12px;padding:12px 18px;font-family:inherit;font-size:16px;font-weight:700;width:160px;text-align:center;outline:none;transition:border .15s;"
+            placeholder="비밀번호"
+            onkeydown="if(event.key==='Enter')checkManualPw()">
+          <button class="btn btn-primary" onclick="checkManualPw()">확인</button>
+        </div>
+        <div id="manual-pw-error" style="font-size:12px;color:var(--coral);font-weight:700;display:none;">비밀번호가 틀렸습니다.</div>
+      </div>
+
+      <!-- 매뉴얼 본문 (비번 확인 후 표시) -->
+      <div id="manual-content" style="display:none;">
+        <div class="topbar">
+          <div class="topbar-left">
+            <div>
+              <div class="page-title">전체업무</div>
+              <div class="page-date">업무 매뉴얼 · 요일별 시간표</div>
+            </div>
+          </div>
+          <div class="topbar-right" style="flex-wrap:wrap;gap:8px;">
+            <div class="search-box" style="min-width:180px;">
+              <span class="search-ico">🔍</span>
+              <input type="text" id="manual-search" placeholder="업무명, 방법 검색" oninput="manualRenderAll()">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="manualOpenAddModal()">+ 업무 추가</button>
+          </div>
+        </div>
+        <div class="content">
+
+          <!-- PC: 시간표 -->
+          <div class="manual-timetable-view">
+            <div class="card" style="overflow:hidden;">
+              <div style="overflow-x:auto;">
+                <div id="manual-tt-inner" style="min-width:820px;">
+                  <div id="manual-tt-header" style="display:flex;position:sticky;top:0;z-index:30;background:var(--white);border-bottom:1px solid var(--border);"></div>
+                  <div style="display:flex;position:relative;" id="manual-tt-body-wrap">
+                    <div id="manual-tt-timecol" style="width:54px;flex-shrink:0;position:sticky;left:0;z-index:20;background:var(--white);border-right:1px solid var(--border);position:relative;"></div>
+                    <div id="manual-tt-days" style="display:flex;flex:1;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 모바일: 요일별 세로 카드 목록 -->
+          <div class="manual-list-view" style="display:none;">
+            <div id="manual-mobile-list" style="display:flex;flex-direction:column;gap:14px;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 </div>
 
@@ -996,6 +1084,63 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<!-- 전체업무: 업무 추가/수정 모달 -->
+<div class="modal-overlay" id="m-manual-task">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="m-manual-task-title">업무 추가</div>
+      <button class="modal-close" onclick="closeModal('m-manual-task')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mt-edit-id">
+      <div class="field-row">
+        <div class="field">
+          <label>요일 *</label>
+          <select id="mt-day">
+            <option>월요일</option><option>화요일</option><option>수요일</option>
+            <option>목요일</option><option>금요일</option><option>토요일</option><option>일요일</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>⭐ 중요 업무</label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;">
+            <input type="checkbox" id="mt-star" style="width:18px;height:18px;accent-color:var(--p2);">
+            <span style="font-size:13px;font-weight:600;color:var(--text2);">중요 업무로 표시</span>
+          </label>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>시작 시간 *</label><input type="time" id="mt-time" onchange="manualUpdateDuration()"></div>
+        <div class="field"><label>종료 시간 *</label><input type="time" id="mt-endtime" oninput="manualUpdateDuration()"></div>
+      </div>
+      <div id="mt-duration-preview" style="font-size:12px;color:var(--p1);font-weight:700;margin:-8px 0 10px;padding:0 2px;"></div>
+      <div class="field"><label>업무명 *</label><input type="text" id="mt-name" placeholder="하는 일"></div>
+      <div class="field"><label>업무방법</label><textarea id="mt-method" placeholder="어떻게 하는지 설명" style="min-height:70px;"></textarea></div>
+      <div class="field"><label>⚠️ 주의사항</label><textarea id="mt-note" placeholder="주의할 점" style="min-height:60px;"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('m-manual-task')">취소</button>
+      <button class="btn btn-primary" onclick="manualSaveTask()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 전체업무: 업무 상세보기 모달 -->
+<div class="modal-overlay" id="m-manual-detail">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title" id="m-manual-detail-title">업무 상세</div>
+      <button class="modal-close" onclick="closeModal('m-manual-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="m-manual-detail-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" onclick="manualDeleteTaskFromDetail()">삭제</button>
+      <button class="btn btn-secondary" onclick="manualEditFromDetail()">수정</button>
+      <button class="btn btn-secondary" onclick="closeModal('m-manual-detail')">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 달력 날짜 상세보기 모달 -->
 <div class="modal-overlay" id="m-cal-detail">
   <div class="modal-box">
@@ -1178,6 +1323,7 @@ const PAGE_INIT = {
   worklogs: ()=>{ if(!_workLogsLoaded){loadWorkersAndLogs();} },
   meals: ()=>{ if(!_mealsLoaded){initMeals();} },
   handover: ()=>{ if(!_handoverLoaded){loadHandovers();} },
+  manual: ()=>{ showManualLock(); },
 };
 function navTo(page){
   document.querySelectorAll('.page').forEach(p=>p.style.display='none');
@@ -2580,6 +2726,345 @@ async function openCalDayDetail(dateStr){
    ============================================ */
 setHomeDate();
 initHomeDashboard();
+</script>
+
+<script>
+/* ============================================
+   전체업무 (업무 매뉴얼) — 비밀번호 잠금 + 시간표
+   ============================================ */
+const MANUAL_PW = '241221';
+const MANUAL_DAYS = ['월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
+const MANUAL_DURATION = 60;
+let _manualUnlocked = false;
+let _manualTasks = [];
+let _manualEditingId = null;
+let _manualDetailId = null;
+let _manualLoaded = false;
+
+/* --- 잠금 --- */
+function showManualLock(){
+  _manualUnlocked = false;
+  document.getElementById('manual-lock-screen').style.display = 'flex';
+  document.getElementById('manual-content').style.display = 'none';
+  document.getElementById('manual-pw-input').value = '';
+  document.getElementById('manual-pw-error').style.display = 'none';
+  setTimeout(()=>document.getElementById('manual-pw-input').focus(), 100);
+}
+
+async function checkManualPw(){
+  const val = document.getElementById('manual-pw-input').value;
+  if(val === MANUAL_PW){
+    _manualUnlocked = true;
+    document.getElementById('manual-lock-screen').style.display = 'none';
+    document.getElementById('manual-content').style.display = 'block';
+    await manualLoad();
+    manualRenderAll();
+  }else{
+    document.getElementById('manual-pw-error').style.display = 'block';
+    document.getElementById('manual-pw-input').value = '';
+    document.getElementById('manual-pw-input').focus();
+  }
+}
+
+/* navTo 후크: PAGE_INIT.manual에서 showManualLock()을 항상 호출하므로 자동 잠금됨 */
+
+/* --- Supabase CRUD --- */
+async function manualLoad(){
+  _manualTasks = await sb.get('manual_tasks', '&order=day.asc,time.asc');
+  _manualLoaded = true;
+}
+
+/* 내부 캐시용 — row 필드명 매핑 */
+function manualTaskToRow(data){
+  return {
+    day: data.day,
+    time: data.time,
+    end_time: data.endTime || null,
+    name: data.name,
+    method: data.method || null,
+    note: data.note || null,
+    star: !!data.star,
+    done: !!data.done,
+  };
+}
+function manualRowToTask(row){
+  return { id: row.id, day: row.day, time: row.time, endTime: row.end_time||'', name: row.name, method: row.method||'', note: row.note||'', star: !!row.star, done: !!row.done };
+}
+
+/* --- 시간 유틸 --- */
+function manualTimeToMin(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+function manualMinToTime(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function manualFormatDur(m){ return m>=60?`${Math.floor(m/60)}시간${m%60?` ${m%60}분`:''}`:m+'분'; }
+function manualTodayDow(){
+  const days = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+  return days[new Date().getDay()];
+}
+
+/* --- 렌더링 --- */
+function manualRenderAll(){
+  if(!_manualUnlocked) return;
+  const q = (document.getElementById('manual-search')?.value||'').trim().toLowerCase();
+  const today = manualTodayDow();
+  // DB row를 렌더링용 task 객체로 변환 (end_time → endTime 등)
+  const tasks = _manualTasks.map(manualRowToTask);
+
+  // 진행률
+  // 시간 범위 08:00~22:00 고정
+  const startH = 8;
+  const endH = 22;
+  const hourH = 60;
+  const totalH = (endH - startH) * hourH;
+
+  // 헤더
+  let hHtml = `<div style="width:54px;flex-shrink:0;position:sticky;left:0;z-index:31;background:var(--white);border-right:1px solid var(--border);"></div>`;
+  MANUAL_DAYS.forEach(day=>{
+    const cnt = tasks.filter(t=>t.day===day).length;
+    const isToday = day===today;
+    hHtml += `<div style="flex:1;text-align:center;padding:12px 4px;border-right:1px solid var(--border);${isToday?'background:var(--p-light);':''}">
+      <div style="font-size:13px;font-weight:800;color:${isToday?'var(--p1)':'var(--text)'};">${day.replace('요일','')}${isToday?'<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--p2);margin-left:4px;vertical-align:middle;"></span>':''}</div>
+      <div style="font-size:10px;color:var(--text3);font-weight:700;margin-top:2px;">${cnt}개</div>
+    </div>`;
+  });
+  document.getElementById('manual-tt-header').innerHTML = hHtml;
+
+  // 시간 라벨
+  const tEl = document.getElementById('manual-tt-timecol');
+  tEl.style.height = totalH+'px';
+  let tHtml = '';
+  for(let h=startH; h<=endH; h++){
+    const top = (h-startH)*hourH;
+    tHtml += `<div style="position:absolute;left:0;right:0;top:${top-7}px;font-size:10px;color:var(--text3);font-weight:700;text-align:center;">${String(h).padStart(2,'0')}:00</div>`;
+  }
+  tEl.innerHTML = tHtml;
+
+  // 요일 칸
+  let dHtml = '';
+  MANUAL_DAYS.forEach(day=>{
+    const isToday = day===today;
+    const dayTasks = tasks.filter(t=>t.day===day);
+
+    // 현재시간 선
+    let nowLine = '';
+    if(isToday){
+      const now = new Date(); const nowMin = now.getHours()*60+now.getMinutes();
+      if(nowMin>=startH*60 && nowMin<=endH*60){
+        const top = (nowMin-startH*60)/60*hourH;
+        nowLine = `<div style="position:absolute;left:0;right:0;top:${top}px;height:0;border-top:2px solid var(--coral);z-index:15;pointer-events:none;"><div style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:var(--coral);"></div></div>`;
+      }
+    }
+
+    let blocks = '';
+    dayTasks.forEach(t=>{
+      if(q && !((t.name||'').toLowerCase().includes(q)||(t.method||'').toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q))) return;
+      const start = manualTimeToMin(t.time||'09:00');
+      const end = manualTimeToMin(t.endTime||manualMinToTime(start+MANUAL_DURATION));
+      const top = (start-startH*60)/60*hourH + 2;
+      const height = Math.max((end-start)/60*hourH - 4, 28);
+      const isDone = !!t.done;
+      const isStar = !!t.star;
+      blocks += `<div onclick="manualShowDetail('${t.id}')" style="
+        position:absolute;border-radius:9px;padding:5px 7px;overflow:hidden;cursor:pointer;
+        top:${top}px;height:${height}px;left:3px;right:3px;
+        background:${isDone?'var(--bg)':isStar?'var(--amber-l)':'var(--p-light)'};
+        border:1px solid ${isDone?'var(--border)':isStar?'var(--amber)':'var(--p3)'};
+        ${isStar&&!isDone?'border-left:3px solid var(--amber);':''}
+        z-index:5;transition:box-shadow .15s;">
+        <div style="font-size:9.5px;font-weight:800;color:${isDone?'var(--text3)':'var(--p1)'};line-height:1.1;">${escapeHtml(t.time)}-${escapeHtml(t.endTime||'')}</div>
+        <div style="font-size:11.5px;font-weight:700;color:${isDone?'var(--text3)':'var(--text)'};${isDone?'text-decoration:line-through;':''};margin-top:1px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${isStar&&!isDone?'⭐ ':''}${escapeHtml(t.name)}</div>
+      </div>`;
+    });
+
+    dHtml += `<div style="flex:1;position:relative;border-right:1px solid var(--border);height:${totalH}px;cursor:crosshair;
+      background-image:linear-gradient(var(--border) 1px,transparent 1px);
+      background-size:100% ${hourH}px;
+      ${isToday?'background-color:rgba(76,175,125,0.04);':''}"
+      onclick="manualHandleColClick(event,'${day}',${startH},${hourH})">
+      ${nowLine}${blocks}
+    </div>`;
+  });
+  document.getElementById('manual-tt-days').innerHTML = dHtml;
+  document.getElementById('manual-tt-body-wrap').style.height = totalH+'px';
+
+  // 모바일: 요일별 세로 카드 목록 렌더링
+  manualRenderMobileList(tasks, q, today);
+}
+
+function manualRenderMobileList(tasks, q, today){
+  const container = document.getElementById('manual-mobile-list');
+  if(!container) return;
+  container.innerHTML = MANUAL_DAYS.map(day=>{
+    const isToday = day===today;
+    const dayTasks = tasks.filter(t=>t.day===day)
+      .filter(t=>!q||((t.name||'').toLowerCase().includes(q)||(t.method||'').toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q)))
+      .sort((a,b)=>manualTimeToMin(a.time||'09:00')-manualTimeToMin(b.time||'09:00'));
+    const rows = dayTasks.length
+      ? dayTasks.map(t=>`
+          <div class="manual-task-row" onclick="manualShowDetail('${t.id}')">
+            <div class="manual-task-time">${escapeHtml(t.time||'')}${t.endTime?'~'+escapeHtml(t.endTime):''}</div>
+            <div>
+              <div class="manual-task-name ${t.done?'done':''}">${t.star?'<span class="star-ico">⭐</span>':''}${escapeHtml(t.name)}</div>
+              ${t.method?`<div style="font-size:11px;color:var(--text3);margin-top:3px;">${escapeHtml(t.method.slice(0,40))}${t.method.length>40?'…':''}</div>`:''}
+            </div>
+          </div>`).join('')
+      : `<div class="manual-empty-day">등록된 업무가 없습니다.</div>`;
+
+    return `<div class="manual-day-card">
+      <div class="manual-day-head">
+        <span class="manual-day-head-label ${isToday?'today':''}">${isToday?'🟢 ':''} ${day}</span>
+        <span class="manual-day-count">${dayTasks.length}개</span>
+      </div>
+      <div>${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+function manualHandleColClick(e, day, startH, hourH){
+  if(e.target.closest('[onclick*="manualShowDetail"]')) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  let mins = startH*60 + (y/hourH)*60;
+  mins = Math.round(mins/15)*15;
+  manualOpenAddModal(day, manualMinToTime(mins), manualMinToTime(mins+MANUAL_DURATION));
+}
+
+/* --- 업무 추가/수정 모달 --- */
+function manualUpdateDuration(){
+  const s = document.getElementById('mt-time').value;
+  const e = document.getElementById('mt-endtime').value;
+  const el = document.getElementById('mt-duration-preview');
+  if(s&&e){ const sm=manualTimeToMin(s),em=manualTimeToMin(e); el.textContent = em>sm?`⏱ ${manualFormatDur(em-sm)}`:'⚠ 종료시간이 시작시간보다 늦어야 합니다'; }
+  else el.textContent = '';
+}
+
+function manualOpenAddModal(prefillDay, prefillTime, prefillEndTime){
+  _manualEditingId = null;
+  document.getElementById('m-manual-task-title').textContent = '업무 추가';
+  document.getElementById('mt-day').value = prefillDay || (MANUAL_DAYS.includes(manualTodayDow())?manualTodayDow():'월요일');
+  const st = prefillTime||'09:00';
+  document.getElementById('mt-time').value = st;
+  document.getElementById('mt-endtime').value = prefillEndTime||manualMinToTime(manualTimeToMin(st)+MANUAL_DURATION);
+  document.getElementById('mt-name').value='';
+  document.getElementById('mt-method').value='';
+  document.getElementById('mt-note').value='';
+  document.getElementById('mt-star').checked=false;
+  manualUpdateDuration();
+  openModal('m-manual-task');
+  setTimeout(()=>document.getElementById('mt-name').focus(),50);
+}
+
+function manualOpenEditModal(id){
+  const row = _manualTasks.find(x=>x.id===id); if(!row) return;
+  const t = manualRowToTask(row);
+  _manualEditingId = id;
+  document.getElementById('m-manual-task-title').textContent = '업무 수정';
+  document.getElementById('mt-day').value = t.day;
+  document.getElementById('mt-time').value = t.time||'09:00';
+  document.getElementById('mt-endtime').value = t.endTime||manualMinToTime(manualTimeToMin(t.time||'09:00')+MANUAL_DURATION);
+  document.getElementById('mt-name').value = t.name||'';
+  document.getElementById('mt-method').value = t.method||'';
+  document.getElementById('mt-note').value = t.note||'';
+  document.getElementById('mt-star').checked = !!t.star;
+  manualUpdateDuration();
+  openModal('m-manual-task');
+}
+
+async function manualSaveTask(){
+  const name = document.getElementById('mt-name').value.trim();
+  if(!name){ toast('업무명을 입력해주세요','error'); return; }
+  const time = document.getElementById('mt-time').value||'09:00';
+  let endTime = document.getElementById('mt-endtime').value||'';
+  if(!endTime||manualTimeToMin(endTime)<=manualTimeToMin(time)) endTime = manualMinToTime(manualTimeToMin(time)+MANUAL_DURATION);
+  const row = manualTaskToRow({ day:document.getElementById('mt-day').value, time, endTime: endTime, name,
+    method:document.getElementById('mt-method').value.trim(), note:document.getElementById('mt-note').value.trim(),
+    star:document.getElementById('mt-star').checked });
+
+  let result;
+  if(_manualEditingId){
+    result = await sb.update('manual_tasks', _manualEditingId, row);
+    if(!result) return;
+    toast('업무를 수정했습니다');
+  }else{
+    result = await sb.insert('manual_tasks', row);
+    if(!result) return;
+    toast('업무를 추가했습니다');
+  }
+  await manualLoad();
+  closeModal('m-manual-task');
+  manualRenderAll();
+}
+
+/* --- 업무 상세 모달 --- */
+function manualShowDetail(id){
+  const t = _manualTasks.find(x=>x.id===id); if(!t) return;
+  _manualDetailId = id;
+  const task = manualRowToTask(t);
+  document.getElementById('m-manual-detail-title').textContent = (task.star?'⭐ ':'')+task.name;
+  const dur = manualFormatDur(manualTimeToMin(task.endTime||manualMinToTime(manualTimeToMin(task.time||'09:00')+MANUAL_DURATION))-manualTimeToMin(task.time||'09:00'));
+  document.getElementById('m-manual-detail-body').innerHTML = `
+    <div class="field">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span class="badge badge-green">${escapeHtml(task.day)}</span>
+        <span style="font-size:13px;font-weight:700;">${escapeHtml(task.time)} ~ ${escapeHtml(task.endTime||'')} <span style="color:var(--text3);font-weight:500;">(${dur})</span></span>
+      </div>
+    </div>
+    ${task.method?`<div class="field"><label>업무방법</label><div style="background:var(--bg);border-radius:10px;padding:12px;font-size:13px;white-space:pre-wrap;line-height:1.7;">${escapeHtml(task.method)}</div></div>`:''}
+    ${task.note?`<div class="field"><label>⚠️ 주의사항</label><div style="background:var(--amber-l);border-radius:10px;padding:12px;font-size:13px;white-space:pre-wrap;line-height:1.7;color:var(--text);">${escapeHtml(task.note)}</div></div>`:''}
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;">
+        <input type="checkbox" ${task.done?'checked':''} onchange="manualToggleDone('${task.id}')" style="width:18px;height:18px;accent-color:var(--p2);">
+        완료로 표시
+      </label>
+    </div>
+  `;
+  openModal('m-manual-detail');
+}
+
+async function manualToggleDone(id){
+  const t = _manualTasks.find(x=>x.id===id); if(!t) return;
+  const result = await sb.update('manual_tasks', id, {done: !t.done});
+  if(!result) return;
+  await manualLoad();
+  manualRenderAll();
+}
+
+function manualEditFromDetail(){
+  const id = _manualDetailId;
+  const t = _manualTasks.find(x=>x.id===id); if(!t) return;
+  const task = manualRowToTask(t);
+  closeModal('m-manual-detail');
+  // openEditModal을 직접 채워서 열기
+  _manualEditingId = id;
+  document.getElementById('m-manual-task-title').textContent = '업무 수정';
+  document.getElementById('mt-day').value = task.day;
+  document.getElementById('mt-time').value = task.time||'09:00';
+  document.getElementById('mt-endtime').value = task.endTime||manualMinToTime(manualTimeToMin(task.time||'09:00')+MANUAL_DURATION);
+  document.getElementById('mt-name').value = task.name||'';
+  document.getElementById('mt-method').value = task.method||'';
+  document.getElementById('mt-note').value = task.note||'';
+  document.getElementById('mt-star').checked = !!task.star;
+  manualUpdateDuration();
+  openModal('m-manual-task');
+}
+
+async function manualDeleteTaskFromDetail(){
+  if(!confirm('이 업무를 삭제할까요?')) return;
+  const ok = await sb.delete('manual_tasks', _manualDetailId);
+  if(!ok) return;
+  await manualLoad();
+  closeModal('m-manual-detail');
+  manualRenderAll();
+  toast('업무를 삭제했습니다');
+}
+
+function manualExport(){
+  const exportData = _manualTasks.map(manualRowToTask);
+  const blob = new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`전체업무_백업_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('백업 파일이 다운로드됐습니다');
+}
 </script>
 
 </body>
