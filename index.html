@@ -2,11 +2,34 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<!-- ===== PWA / 모바일 최적화 메타태그 ===== -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#4CAF7D">
+<meta name="description" content="대치디원스파르타 일산본원 업무관리 앱">
+<meta name="format-detection" content="telephone=no">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- Apple PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="학원관리">
+
+<!-- MS Tile -->
+<meta name="msapplication-TileColor" content="#4CAF7D">
+<meta name="msapplication-tap-highlight" content="no">
+
+<!-- 아이콘 -->
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+
 <title>학원 업무관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+/* Safe Area (iPhone 노치/홈바 대응) */
+body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
 :root{
   --bg:#F7FAF7;--white:#fff;
   --p1:#1F5C3F;--p2:#4CAF7D;--p3:#A7D8BC;--p-light:#EAF7EF;
@@ -3021,6 +3044,37 @@ function manualExport(){
   a.href=url; a.download=`전체업무_백업_${new Date().toISOString().slice(0,10)}.json`;
   a.click(); URL.revokeObjectURL(url);
   toast('백업 파일이 다운로드됐습니다');
+}
+</script>
+
+<script>
+/* ============================================
+   Service Worker 등록 (PWA)
+   ============================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => {
+        // 새 버전이 대기 중이면 즉시 적용
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
+      })
+      .catch(err => console.warn('SW 등록 실패:', err));
+
+    // 새 SW 활성화 시 페이지 새로고침
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) { refreshing = true; window.location.reload(); }
+    });
+  });
 }
 </script>
 
