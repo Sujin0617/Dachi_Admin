@@ -367,45 +367,24 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
 
 
 @media (max-width:880px){
-  .app{display:block;}
-  .sidebar{
-    position:fixed!important;
-    left:-270px;
-    top:0;
-    bottom:0;
-    width:260px;
-    z-index:1000;
-    transition:left .25s ease;
-  }
-  .sidebar.open{left:0;}
-  .sidebar-overlay{
-    display:none;
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,.45);
-    z-index:999;
-  }
-  .sidebar-overlay.open{display:block;}
-  .main{
-    margin-left:0!important;
-    width:100%!important;
-    min-width:0;
-  }
+  .sidebar{left:-280px;width:260px;}
+  .sidebar.open{left:0;box-shadow:4px 0 24px rgba(0,0,0,.12);}
+  .main{margin-left:0;}
   .mobile-topbar{
-    display:flex;
-    position:sticky;
-    top:0;
-    z-index:998;
-    background:#fff;
-    padding:14px 16px;
-    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--white);
+    border-bottom:1px solid var(--border);position:sticky;top:0;z-index:35;
   }
+  .mobile-menu-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--white);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
   .topbar{padding:14px 16px;}
-  .content{padding:16px;}
+  .content{padding:16px 16px 60px;}
   .field-row{grid-template-columns:1fr;}
-  .manual-timetable-view{display:none!important;}
-  .manual-list-view{display:block!important;}
+  .modal-box{max-height:92vh;}
+  /* 전체업무: 모바일에서 시간표 숨기고 세로 목록으로 */
+  .manual-timetable-view{display:none !important;}
+  .manual-list-view{display:block !important;}
+  .schedule-tab-bar{grid-template-columns:repeat(2,1fr);}
 }
+
 /* 전체업무 모바일 카드 스타일 */
 .manual-day-card{background:var(--white);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
 .manual-day-head{
@@ -782,23 +761,8 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
 
     <!-- ============ 전체업무 (업무 매뉴얼) ============ -->
     <section class="page" id="page-manual" style="display:none;">
-      <!-- 비번 잠금 화면 -->
-      <div id="manual-lock-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:20px;">
-        <div style="font-size:36px;">🔒</div>
-        <div style="font-size:18px;font-weight:800;color:var(--text);">전체업무 매뉴얼</div>
-        <div style="font-size:13px;color:var(--text3);font-weight:600;">비밀번호를 입력하세요</div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <input type="password" id="manual-pw-input" maxlength="10"
-            style="border:1.5px solid var(--border);border-radius:12px;padding:12px 18px;font-family:inherit;font-size:16px;font-weight:700;width:160px;text-align:center;outline:none;transition:border .15s;"
-            placeholder="비밀번호"
-            onkeydown="if(event.key==='Enter')checkManualPw()">
-          <button class="btn btn-primary" onclick="checkManualPw()">확인</button>
-        </div>
-        <div id="manual-pw-error" style="font-size:12px;color:var(--coral);font-weight:700;display:none;">비밀번호가 틀렸습니다.</div>
-      </div>
-
-      <!-- 매뉴얼 본문 (비번 확인 후 표시) -->
-      <div id="manual-content" style="display:none;">
+      <!-- 매뉴얼 본문 -->
+      <div id="manual-content">
         <div class="topbar">
           <div class="topbar-left">
             <div>
@@ -1333,27 +1297,10 @@ function confirmAction(message, onConfirm){
 /* ============================================
    사이드바 / 네비게이션
    ============================================ */
-function toggleSidebar(forceClose=false){
-  const s=document.getElementById('sidebar');
-  const o=document.getElementById('sidebar-overlay');
-  if(forceClose){
-    s.classList.remove('open');
-    o.classList.remove('open');
-    return;
-  }
-  s.classList.toggle('open');
-  o.classList.toggle('open');
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
 }
-
-document.addEventListener('click',function(e){
-  if(window.innerWidth>880) return;
-  if(e.target.closest('.menu-item')){
-    toggleSidebar(true);
-  }
-});
-window.addEventListener('resize',()=>{
- if(window.innerWidth>880) toggleSidebar(true);
-});
 const PAGE_INIT = {
   home: ()=>{ setHomeDate(); initHomeDashboard(); },
   students: ()=>{ if(!_studentsLoaded){loadStudents();} },
@@ -1361,7 +1308,7 @@ const PAGE_INIT = {
   worklogs: ()=>{ if(!_workLogsLoaded){loadWorkersAndLogs();} },
   meals: ()=>{ if(!_mealsLoaded){initMeals();} },
   handover: ()=>{ if(!_handoverLoaded){loadHandovers();} },
-  manual: ()=>{ showManualLock(); },
+  manual: ()=>{ if(!_manualLoaded){ manualLoad().then(()=>manualRenderAll()); } else { manualRenderAll(); } },
 };
 function navTo(page){
   document.querySelectorAll('.page').forEach(p=>p.style.display='none');
@@ -1582,6 +1529,7 @@ async function saveStudent(){
     memo: document.getElementById('student-memo').value.trim(),
     counsel_memo: document.getElementById('student-counsel-memo').value.trim(),
     check_days: getSelectedStudentCheckDays(),
+    check_day: null, // 구버전 단일값 컬럼 초기화 (fallback 충돌 방지)
   };
   const editId = document.getElementById('student-edit-id').value;
   let result;
@@ -1861,7 +1809,8 @@ async function toggleScheduleCheckDay(day){
   if(idx===-1) return;
   const current = getStudentCheckDays(_scheduleStudents[idx]);
   const newDays = current.includes(day) ? current.filter(d=>d!==day) : [...current, day].sort((a,b)=>a-b);
-  const result = await sb.update('students', id, { check_days: newDays });
+  // check_day(구버전 단일값)도 null로 초기화해서 fallback 충돌 방지
+  const result = await sb.update('students', id, { check_days: newDays, check_day: null });
   if(!result) return;
   _scheduleStudents[idx] = result;
   renderScheduleCheckDaysChips(result);
@@ -2770,41 +2719,12 @@ initHomeDashboard();
 /* ============================================
    전체업무 (업무 매뉴얼) — 비밀번호 잠금 + 시간표
    ============================================ */
-const MANUAL_PW = '241221';
 const MANUAL_DAYS = ['월요일','화요일','수요일','목요일','금요일','토요일','일요일'];
 const MANUAL_DURATION = 60;
-let _manualUnlocked = false;
 let _manualTasks = [];
 let _manualEditingId = null;
 let _manualDetailId = null;
 let _manualLoaded = false;
-
-/* --- 잠금 --- */
-function showManualLock(){
-  _manualUnlocked = false;
-  document.getElementById('manual-lock-screen').style.display = 'flex';
-  document.getElementById('manual-content').style.display = 'none';
-  document.getElementById('manual-pw-input').value = '';
-  document.getElementById('manual-pw-error').style.display = 'none';
-  setTimeout(()=>document.getElementById('manual-pw-input').focus(), 100);
-}
-
-async function checkManualPw(){
-  const val = document.getElementById('manual-pw-input').value;
-  if(val === MANUAL_PW){
-    _manualUnlocked = true;
-    document.getElementById('manual-lock-screen').style.display = 'none';
-    document.getElementById('manual-content').style.display = 'block';
-    await manualLoad();
-    manualRenderAll();
-  }else{
-    document.getElementById('manual-pw-error').style.display = 'block';
-    document.getElementById('manual-pw-input').value = '';
-    document.getElementById('manual-pw-input').focus();
-  }
-}
-
-/* navTo 후크: PAGE_INIT.manual에서 showManualLock()을 항상 호출하므로 자동 잠금됨 */
 
 /* --- Supabase CRUD --- */
 async function manualLoad(){
@@ -2840,7 +2760,6 @@ function manualTodayDow(){
 
 /* --- 렌더링 --- */
 function manualRenderAll(){
-  if(!_manualUnlocked) return;
   const q = (document.getElementById('manual-search')?.value||'').trim().toLowerCase();
   const today = manualTodayDow();
   // DB row를 렌더링용 task 객체로 변환 (end_time → endTime 등)
