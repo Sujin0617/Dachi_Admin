@@ -42,6 +42,7 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
   --text:#1A1A18;--text2:#5C5850;--text3:#A8A296;
   --border:#E7EFE8;--sh:0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
   --sidebar-w:230px;
+  --mobile-header-h:56px;
 }
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
 ::-webkit-scrollbar{width:8px;height:8px;}
@@ -54,7 +55,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .sidebar{
   width:var(--sidebar-w);flex-shrink:0;background:var(--white);
   border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;
-  display:flex;flex-direction:column;z-index:40;transition:left .25s ease;
+  display:flex;flex-direction:column;z-index:50;transition:left .25s ease;
 }
 .sidebar-brand{padding:24px 22px 18px;border-bottom:1px solid var(--border);}
 .sidebar-brand-title{font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.2px;}
@@ -71,8 +72,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .sidebar-foot{padding:16px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:500;}
 
 /* 모바일 사이드바 토글 */
-.mobile-topbar{display:none;}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:39;}
+.mobile-topbar{
+  display:none;
+  position:fixed;top:0;left:0;right:0;z-index:45;
+  height:var(--mobile-header-h);
+  align-items:center;gap:10px;padding:0 16px;
+  padding-top:env(safe-area-inset-top);
+  box-sizing:content-box;
+  background:var(--white);border-bottom:1px solid var(--border);
+}
+.mobile-menu-btn{
+  width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
+  background:var(--white);font-size:17px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:46;}
 .sidebar-overlay.open{display:block;}
 
 /* 메인 콘텐츠 */
@@ -390,14 +404,10 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
 
 
 @media (max-width:880px){
-  .sidebar{left:-280px;width:260px;}
+  .sidebar{left:-280px;width:260px;top:0;}
   .sidebar.open{left:0;box-shadow:4px 0 24px rgba(0,0,0,.12);}
-  .main{margin-left:0;}
-  .mobile-topbar{
-    display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--white);
-    border-bottom:1px solid var(--border);position:sticky;top:0;z-index:35;
-  }
-  .mobile-menu-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--white);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .main{margin-left:0;padding-top:calc(var(--mobile-header-h) + env(safe-area-inset-top));}
+  .mobile-topbar{display:flex;}
   .topbar{padding:14px 16px;}
   .content{padding:16px 16px 60px;}
   .field-row{grid-template-columns:1fr;}
@@ -436,13 +446,14 @@ table.data-table tbody tr:last-child td{border-bottom:none;}
 <div id="loading-bar"></div>
 <div id="toast-wrap"></div>
 
+<!-- 모바일 전용 고정 상단바: ☰ 누르면 사이드바 열림 -->
+<div class="mobile-topbar">
+  <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+  <span style="font-weight:800;font-size:15px;color:var(--text);">🌿 대치디원스파르타</span>
+</div>
+
 <div class="app">
 
-  <!-- 모바일 상단바 -->
-  <div class="mobile-topbar">
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-    <div style="font-weight:800;font-size:15px;">학원 업무관리</div>
-  </div>
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
   <!-- 좌측 사이드바 -->
@@ -2793,7 +2804,7 @@ function manualRenderAll(){
   const startH = 8;
   const endH = 22;
   const hourH = 60;
-  const totalH = (endH - startH) * hourH;
+  let totalH = (endH - startH) * hourH;
 
   // 헤더
   let hHtml = `<div style="width:54px;flex-shrink:0;position:sticky;left:0;z-index:31;background:var(--white);border-right:1px solid var(--border);"></div>`;
@@ -2807,9 +2818,8 @@ function manualRenderAll(){
   });
   document.getElementById('manual-tt-header').innerHTML = hHtml;
 
-  // 시간 라벨
+  // 시간 라벨 (실제 높이는 배치 계산 후 최종 totalH로 재설정)
   const tEl = document.getElementById('manual-tt-timecol');
-  tEl.style.height = totalH+'px';
   let tHtml = '';
   for(let h=startH; h<=endH; h++){
     const top = (h-startH)*hourH;
@@ -2817,11 +2827,68 @@ function manualRenderAll(){
   }
   tEl.innerHTML = tHtml;
 
-  // 요일 칸
+  // ===== 1단계: 각 요일별 업무 배치 계산 (겹침 처리 + 최소높이 보정) =====
+  const MIN_BLOCK_H = 46; // 시간라벨+업무명 2줄이 들어가기 위한 최소 픽셀 높이
+  const dayLayouts = {}; // day -> { visibleTasks(with top/height/col/totalCols), nowLine }
+  let maxBottom = totalH;
+
+  MANUAL_DAYS.forEach(day=>{
+    const dayTasks = tasks.filter(t=>t.day===day);
+    const visibleTasks = dayTasks.filter(t=>!q || ((t.name||'').toLowerCase().includes(q)||(t.method||'').toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q)));
+
+    const withRange = visibleTasks.map(t=>{
+      const start = manualTimeToMin(t.time||'09:00');
+      const end = manualTimeToMin(t.endTime||manualMinToTime(start+MANUAL_DURATION));
+      return {t, start, end};
+    }).sort((a,b)=>a.start-b.start || a.end-b.end);
+
+    // 겹치는 그룹 찾기
+    const groups = [];
+    withRange.forEach(item=>{
+      let placed = false;
+      for(const g of groups){
+        if(item.start < g.maxEnd){ g.items.push(item); g.maxEnd = Math.max(g.maxEnd, item.end); placed = true; break; }
+      }
+      if(!placed) groups.push({ items:[item], maxEnd:item.end });
+    });
+
+    groups.forEach(g=>{
+      const cols = [];
+      g.items.forEach(item=>{
+        let colIdx = cols.findIndex(endInfo=>item.start >= endInfo);
+        if(colIdx===-1){ colIdx = cols.length; cols.push(item.end); }
+        else cols[colIdx] = item.end;
+        item.col = colIdx;
+      });
+      const totalCols = cols.length;
+      g.items.forEach(item=>{ item.totalCols = totalCols; });
+    });
+
+    // 같은 컬럼 안에서 순서대로 배치, 최소 높이 보장하며 다음 블록과 겹치지 않게 밀어내기
+    const colLastBottom = {};
+    withRange.sort((a,b)=>a.col-b.col || a.start-b.start);
+    withRange.forEach(item=>{
+      const rawTop = (item.start-startH*60)/60*hourH + 2;
+      const rawHeight = Math.max((item.end-item.start)/60*hourH - 4, MIN_BLOCK_H);
+      const prevBottom = colLastBottom[item.col] || -Infinity;
+      const top = Math.max(rawTop, prevBottom + 4);
+      item.top = top;
+      item.height = rawHeight;
+      colLastBottom[item.col] = top + rawHeight;
+      maxBottom = Math.max(maxBottom, top + rawHeight + 8);
+    });
+
+    dayLayouts[day] = withRange;
+  });
+
+  totalH = maxBottom; // 내용이 넘치면 칼럼 전체 높이를 늘려서 잘리지 않게 함
+  tEl.style.height = totalH+'px';
+
+  // ===== 2단계: 실제 HTML 생성 =====
   let dHtml = '';
   MANUAL_DAYS.forEach(day=>{
     const isToday = day===today;
-    const dayTasks = tasks.filter(t=>t.day===day);
+    const withRange = dayLayouts[day];
 
     // 현재시간 선
     let nowLine = '';
@@ -2834,17 +2901,16 @@ function manualRenderAll(){
     }
 
     let blocks = '';
-    dayTasks.forEach(t=>{
-      if(q && !((t.name||'').toLowerCase().includes(q)||(t.method||'').toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q))) return;
-      const start = manualTimeToMin(t.time||'09:00');
-      const end = manualTimeToMin(t.endTime||manualMinToTime(start+MANUAL_DURATION));
-      const top = (start-startH*60)/60*hourH + 2;
-      const height = Math.max((end-start)/60*hourH - 4, 28);
+    withRange.forEach(({t, top, height, col, totalCols})=>{
       const isDone = !!t.done;
       const isStar = !!t.star;
+      const gap = 3;
+      const widthPct = 100/totalCols;
+      const leftPct = col*widthPct;
       blocks += `<div onclick="manualShowDetail('${t.id}')" style="
         position:absolute;border-radius:9px;padding:5px 7px;overflow:hidden;cursor:pointer;
-        top:${top}px;height:${height}px;left:3px;right:3px;
+        top:${top}px;height:${height}px;
+        left:calc(${leftPct}% + ${gap}px);width:calc(${widthPct}% - ${gap*2}px);
         background:${isDone?'var(--bg)':isStar?'var(--amber-l)':'var(--p-light)'};
         border:1px solid ${isDone?'var(--border)':isStar?'var(--amber)':'var(--p3)'};
         ${isStar&&!isDone?'border-left:3px solid var(--amber);':''}
